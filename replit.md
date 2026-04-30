@@ -25,3 +25,12 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Pulse Commerce App
+
+Production e-commerce analytics dashboard backed by Postgres.
+
+- **Backend** (`artifacts/api-server`): Express + JWT auth + Drizzle. Routes under `/api/*` for auth, dashboard, orders, products, customers, marketing, integrations, settings, activities. Service layer (`src/services/*`) is the single source of truth for business calculations: `revenue = SUM(orders.total_amount WHERE status IN ['paid','fulfilled'])`, `ad_spend = SUM(ad_metrics.spend)`, `profit = revenue - ad_spend`. Integration framework (`src/integrations/*`) registers Shopify/Meta/etc.; sync engine (`src/sync/engine.ts`) runs every 15 min with 3 retries.
+- **Frontend** (`artifacts/data-app`): React + Vite. All data comes from generated React Query hooks in `@workspace/api-client-react` — no mock data, no FE-side aggregation. Auth token in `localStorage["pulse.auth.token"]`. Global `DateRangeContext` (`7d/14d/30d/90d`) drives every query.
+- **Demo user**: `demo@pulse.test` / `demo1234` (seed data: 90d orders, 5 campaigns, integrations).
+- **Schemas/hooks**: regenerate with `pnpm --filter @workspace/api-spec run codegen` after editing the OpenAPI spec.

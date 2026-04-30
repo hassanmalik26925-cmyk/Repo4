@@ -2,21 +2,28 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: Pulse Commerce analytics API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: dashboard
+  - name: orders
+  - name: products
+  - name: customers
+  - name: marketing
+  - name: integrations
+  - name: settings
+  - name: activities
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +31,849 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Create a new account and seed demo data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Exchange credentials for a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: me
+      tags: [auth]
+      summary: Get the current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /dashboard/overview:
+    get:
+      operationId: getDashboardOverview
+      tags: [dashboard]
+      summary: KPI overview
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Overview KPIs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardOverview"
+
+  /dashboard/revenue-trend:
+    get:
+      operationId: getRevenueTrend
+      tags: [dashboard]
+      summary: Revenue & ad spend by day
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Daily revenue & spend
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RevenuePoint"
+
+  /dashboard/revenue-by-platform:
+    get:
+      operationId: getRevenueByPlatform
+      tags: [dashboard]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Revenue by platform
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlatformRevenue"
+
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: platform
+          schema: { type: string }
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        "200":
+          description: Order list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderListResponse"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /orders/{id}/fulfill:
+    post:
+      operationId: fulfillOrder
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderSummary"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Products with performance
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductPerformance"
+
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Customer list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+
+  /marketing/summary:
+    get:
+      operationId: getMarketingSummary
+      tags: [marketing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketingSummary"
+
+  /marketing/campaigns:
+    get:
+      operationId: listCampaigns
+      tags: [marketing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+
+  /marketing/by-channel:
+    get:
+      operationId: getMarketingByChannel
+      tags: [marketing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Spend & revenue per channel
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChannelMetric"
+
+  /integrations:
+    get:
+      operationId: listIntegrations
+      tags: [integrations]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Integrations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Integration"
+
+  /integrations/{platform}/connect:
+    post:
+      operationId: connectIntegration
+      tags: [integrations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: platform
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectIntegrationBody"
+      responses:
+        "200":
+          description: Connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Integration"
+        "400":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /integrations/{platform}/disconnect:
+    post:
+      operationId: disconnectIntegration
+      tags: [integrations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: platform
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Integration"
+
+  /integrations/{platform}/sync:
+    post:
+      operationId: syncIntegration
+      tags: [integrations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: platform
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Sync started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Integration"
+
+  /integrations/health:
+    get:
+      operationId: getIntegrationsHealth
+      tags: [integrations]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationsHealth"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  /activities:
+    get:
+      operationId: listActivities
+      tags: [activities]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    RangeParam:
+      in: query
+      name: range
+      schema:
+        type: string
+        enum: [7d, 14d, 30d, 90d]
+        default: 30d
+
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
 
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    AuthUser:
+      type: object
+      required: [id, email, name, role]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: string }
+        role: { type: string }
+
+    AuthResponse:
+      type: object
+      required: [token, expiresAt, user]
+      properties:
+        token: { type: string }
+        expiresAt: { type: string }
+        user: { $ref: "#/components/schemas/AuthUser" }
+
+    RegisterBody:
+      type: object
+      required: [email, password, name]
+      properties:
+        email: { type: string }
+        password: { type: string }
+        name: { type: string }
+
+    LoginBody:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string }
+
+    Metric:
+      type: object
+      required: [value, deltaPct]
+      properties:
+        value: { type: number }
+        deltaPct: { type: number }
+
+    DashboardOverview:
+      type: object
+      required:
+        [
+          range,
+          revenue,
+          adSpend,
+          profit,
+          ordersCount,
+          avgOrderValue,
+          roas,
+          cpa,
+          margin,
+        ]
+      properties:
+        range: { type: string }
+        revenue: { $ref: "#/components/schemas/Metric" }
+        adSpend: { $ref: "#/components/schemas/Metric" }
+        profit: { $ref: "#/components/schemas/Metric" }
+        ordersCount: { $ref: "#/components/schemas/Metric" }
+        avgOrderValue: { $ref: "#/components/schemas/Metric" }
+        roas: { $ref: "#/components/schemas/Metric" }
+        cpa: { $ref: "#/components/schemas/Metric" }
+        margin: { type: number }
+
+    RevenuePoint:
+      type: object
+      required: [date, revenue, adSpend]
+      properties:
+        date: { type: string }
+        revenue: { type: number }
+        adSpend: { type: number }
+
+    PlatformRevenue:
+      type: object
+      required: [platform, revenue]
+      properties:
+        platform: { type: string }
+        revenue: { type: number }
+
+    OrderRow:
+      type: object
+      required:
+        [
+          id,
+          orderNumber,
+          platform,
+          status,
+          totalAmount,
+          profit,
+          orderedAt,
+          productSummary,
+          itemCount,
+        ]
+      properties:
+        id: { type: string }
+        orderNumber: { type: string }
+        platform: { type: string }
+        status: { type: string }
+        totalAmount: { type: number }
+        profit: { type: number }
+        orderedAt: { type: string }
+        productSummary: { type: string }
+        itemCount: { type: integer }
+
+    OrderListResponse:
+      type: object
+      required: [orders, summary]
+      properties:
+        summary:
+          type: object
+          required: [revenue, profit, count]
+          properties:
+            revenue: { type: number }
+            profit: { type: number }
+            count: { type: integer }
+        orders:
+          type: array
+          items: { $ref: "#/components/schemas/OrderRow" }
+
+    OrderItemDetail:
+      type: object
+      required:
+        [id, name, quantity, unitPrice, unitCost, lineTotal]
+      properties:
+        id: { type: string }
+        productId: { type: ["string", "null"] }
+        name: { type: string }
+        quantity: { type: integer }
+        unitPrice: { type: number }
+        unitCost: { type: number }
+        lineTotal: { type: number }
+
+    OrderSummary:
+      type: object
+      required:
+        [
+          id,
+          orderNumber,
+          platform,
+          status,
+          totalAmount,
+          orderedAt,
+        ]
+      properties:
+        id: { type: string }
+        orderNumber: { type: string }
+        platform: { type: string }
+        status: { type: string }
+        totalAmount: { type: number }
+        orderedAt: { type: string }
+
+    OrderDetail:
+      type: object
+      required: [order, items]
+      properties:
+        order:
+          type: object
+          required:
+            [
+              id,
+              orderNumber,
+              platform,
+              status,
+              totalAmount,
+              subtotal,
+              shipping,
+              tax,
+              profit,
+              orderedAt,
+            ]
+          properties:
+            id: { type: string }
+            orderNumber: { type: string }
+            platform: { type: string }
+            status: { type: string }
+            totalAmount: { type: number }
+            subtotal: { type: number }
+            shipping: { type: number }
+            tax: { type: number }
+            profit: { type: number }
+            orderedAt: { type: string }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrderItemDetail" }
+        customer:
+          type: ["object", "null"]
+          properties:
+            id: { type: ["string", "null"] }
+            name: { type: string }
+            email: { type: string }
+            phone: { type: ["string", "null"] }
+
+    ProductPerformance:
+      type: object
+      required:
+        [
+          id,
+          name,
+          category,
+          price,
+          cogs,
+          stock,
+          status,
+          lowStock,
+          unitsSold,
+          revenue,
+          profit,
+          margin,
+          roas,
+        ]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        category: { type: string }
+        price: { type: number }
+        cogs: { type: number }
+        stock: { type: integer }
+        status: { type: string }
+        lowStock: { type: boolean }
+        unitsSold: { type: integer }
+        revenue: { type: number }
+        profit: { type: number }
+        margin: { type: number }
+        roas: { type: number }
+
+    Customer:
+      type: object
+      required: [id, name, email, totalSpent, ordersCount]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        totalSpent: { type: number }
+        ordersCount: { type: integer }
+
+    MarketingSummary:
+      type: object
+      required:
+        [
+          adSpend,
+          adRevenue,
+          roas,
+          cpa,
+          ctr,
+          conversions,
+          clicks,
+          impressions,
+        ]
+      properties:
+        adSpend: { type: number }
+        adRevenue: { type: number }
+        roas: { type: number }
+        cpa: { type: number }
+        ctr: { type: number }
+        conversions: { type: integer }
+        clicks: { type: integer }
+        impressions: { type: integer }
+
+    Campaign:
+      type: object
+      required:
+        [
+          id,
+          name,
+          channel,
+          spend,
+          revenue,
+          conversions,
+          clicks,
+          impressions,
+          cpa,
+          roas,
+          ctr,
+        ]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        channel: { type: string }
+        spend: { type: number }
+        revenue: { type: number }
+        conversions: { type: integer }
+        clicks: { type: integer }
+        impressions: { type: integer }
+        cpa: { type: number }
+        roas: { type: number }
+        ctr: { type: number }
+
+    ChannelMetric:
+      type: object
+      required: [channel, spend, revenue]
+      properties:
+        channel: { type: string }
+        spend: { type: number }
+        revenue: { type: number }
+
+    Integration:
+      type: object
+      required:
+        [id, platform, displayName, status, supportsCredentials]
+      properties:
+        id: { type: string }
+        platform: { type: string }
+        displayName: { type: string }
+        status: { type: string }
+        lastSyncAt: { type: ["string", "null"] }
+        lastError: { type: ["string", "null"] }
+        supportsCredentials: { type: boolean }
+
+    ConnectIntegrationBody:
+      type: object
+      properties:
+        apiKey: { type: string }
+        apiSecret: { type: string }
+        accessToken: { type: string }
+        shopDomain: { type: string }
+        accountId: { type: string }
+
+    IntegrationsHealth:
+      type: object
+      required: [overall, integrations]
+      properties:
+        overall: { type: string }
+        integrations:
+          type: array
+          items:
+            type: object
+            required: [platform, status]
+            properties:
+              platform: { type: string }
+              status: { type: string }
+              lastSyncAt: { type: ["string", "null"] }
+              lastError: { type: ["string", "null"] }
+
+    Settings:
+      type: object
+      required:
+        [
+          name,
+          email,
+          role,
+          notificationsEnabled,
+          dataRefreshMinutes,
+          defaultRange,
+          currency,
+        ]
+      properties:
+        name: { type: string }
+        email: { type: string }
+        role: { type: string }
+        notificationsEnabled: { type: boolean }
+        dataRefreshMinutes: { type: integer }
+        defaultRange: { type: string }
+        currency: { type: string }
+
+    UpdateSettingsBody:
+      type: object
+      properties:
+        name: { type: string }
+        notificationsEnabled: { type: boolean }
+        dataRefreshMinutes: { type: integer }
+        defaultRange: { type: string }
+        currency: { type: string }
+
+    Activity:
+      type: object
+      required: [id, type, title, createdAt]
+      properties:
+        id: { type: string }
+        type: { type: string }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        entityType: { type: ["string", "null"] }
+        entityId: { type: ["string", "null"] }
+        createdAt: { type: string }
