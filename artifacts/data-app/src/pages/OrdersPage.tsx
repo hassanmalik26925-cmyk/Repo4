@@ -1,13 +1,14 @@
 import { useState } from "react";
 import {
-  ShoppingBag,
   Search,
+  X,
   CheckCircle2,
   Loader2,
-  X,
+  Copy,
+  Truck,
+  CreditCard,
   Mail,
-  Phone,
-  Calendar,
+  ChevronRight,
 } from "lucide-react";
 import {
   useListOrders,
@@ -17,43 +18,43 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDateRange } from "../contexts/DateRangeContext";
-import {
-  Card,
-  StatCard,
-  C,
-  FilterPill,
-  Skeleton,
-  EmptyState,
-} from "../components/UIPrimitives";
-import {
-  formatCurrency,
-  formatNumber,
-  formatDateTime,
-} from "../lib/format";
+import { Skeleton, EmptyState } from "../components/UIPrimitives";
+import { formatCurrency, formatCurrencyExact, formatDateShort } from "../lib/format";
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_FILTERS = [
   { key: "all", label: "All" },
-  { key: "pending", label: "Pending" },
-  { key: "paid", label: "Paid" },
   { key: "fulfilled", label: "Fulfilled" },
+  { key: "pending", label: "Pending" },
   { key: "cancelled", label: "Cancelled" },
-  { key: "refunded", label: "Refunded" },
 ];
 
 const PLATFORM_FILTERS = [
-  { key: "all", label: "All" },
-  { key: "shopify", label: "Shopify" },
-  { key: "woocommerce", label: "WooCommerce" },
-  { key: "direct", label: "Direct" },
+  { key: "all", label: "All", color: "#6B7280" },
+  { key: "shopify", label: "Shopify", color: "#22C55E" },
+  { key: "woocommerce", label: "WooCommerce", color: "#8B5CF6" },
+  { key: "amazon", label: "Amazon", color: "#F59E0B" },
+  { key: "direct", label: "Direct", color: "#F97316" },
 ];
 
 const STATUS_COLOR: Record<string, string> = {
-  pending: "bg-amber-500/10 text-amber-500",
-  paid: "bg-sky-500/10 text-sky-500",
-  fulfilled: "bg-emerald-500/10 text-emerald-500",
-  cancelled: "bg-slate-500/10 text-slate-500",
-  refunded: "bg-red-500/10 text-red-500",
+  pending: "#F59E0B",
+  paid: "#0EA5E9",
+  fulfilled: "#22C55E",
+  cancelled: "#6B7280",
+  refunded: "#EF4444",
 };
+
+const PLATFORM_COLOR: Record<string, string> = {
+  shopify: "#22C55E",
+  woocommerce: "#8B5CF6",
+  amazon: "#F59E0B",
+  direct: "#F97316",
+  manual: "#6B7280",
+};
+
+// ── Orders page ───────────────────────────────────────────────────────────────
 
 export function OrdersPage() {
   const { range } = useDateRange();
@@ -61,6 +62,7 @@ export function OrdersPage() {
   const [platform, setPlatform] = useState("all");
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+
   const list = useListOrders({
     range,
     status: status === "all" ? undefined : (status as any),
@@ -72,132 +74,190 @@ export function OrdersPage() {
   const summary = list.data?.summary;
 
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
-        <p className="text-sm text-muted-foreground">
-          {summary
-            ? `${formatNumber(summary.count)} orders · ${formatCurrency(summary.revenue)} revenue`
-            : "Loading…"}
-        </p>
+    <div className="flex flex-col gap-0">
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between py-4">
+        <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
+        <button className="flex h-9 w-9 items-center justify-center rounded-full border border-[hsl(var(--card-border))] text-muted-foreground hover-elevate">
+          <Search className="h-4 w-4" />
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatCard
-          label="Revenue"
-          value={summary ? formatCurrency(summary.revenue) : "—"}
-          color={C.blue}
-          icon={<ShoppingBag className="h-4 w-4" />}
-          loading={list.isLoading}
-        />
-        <StatCard
-          label="Profit"
-          value={summary ? formatCurrency(summary.profit) : "—"}
-          color={C.green}
-          icon={<CheckCircle2 className="h-4 w-4" />}
-          loading={list.isLoading}
-        />
-        <StatCard
-          label="Orders"
-          value={summary ? formatNumber(summary.count) : "—"}
-          color={C.violet}
-          icon={<ShoppingBag className="h-4 w-4" />}
-          loading={list.isLoading}
-        />
-      </div>
-
-      <Card className="p-3">
-        <div className="flex items-center gap-2 rounded-lg border border-[hsl(var(--card-border))] bg-background px-3">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <input
-            placeholder="Search by order # or customer"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 flex-1 bg-transparent text-sm focus:outline-none"
-          />
+      {/* ── Stats row ──────────────────────────────────────────────────── */}
+      <div className="mb-4 grid grid-cols-3 gap-2">
+        <div className="rounded-2xl border border-[hsl(var(--card-border))] bg-card p-3">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Revenue
+          </div>
+          <div className="mt-1 text-xl font-bold">
+            {summary ? formatCurrency(summary.revenue) : "—"}
+          </div>
         </div>
-      </Card>
+        <div className="rounded-2xl border-2 border-sky-400/60 bg-sky-50 p-3 dark:bg-sky-950/30">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-500">
+            Profit
+          </div>
+          <div className="mt-1 text-xl font-bold text-sky-500">
+            {summary ? formatCurrency(summary.profit) : "—"}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-[hsl(var(--card-border))] bg-card p-3">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Total
+          </div>
+          <div className="mt-1 text-xl font-bold">
+            {summary ? summary.count : "—"}
+          </div>
+        </div>
+      </div>
 
-      <div className="-mx-4 overflow-x-auto px-4">
-        <div className="flex gap-2">
+      {/* ── Search bar ─────────────────────────────────────────────────── */}
+      <div className="mb-3 flex items-center gap-2 rounded-xl border border-[hsl(var(--card-border))] bg-card px-3">
+        <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <input
+          placeholder="Search by order # or customer"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-10 flex-1 bg-transparent text-sm focus:outline-none"
+        />
+        {search && (
+          <button onClick={() => setSearch("")}>
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+      </div>
+
+      {/* ── Status filter ──────────────────────────────────────────────── */}
+      <div className="-mx-4 mb-2 overflow-x-auto px-4">
+        <div className="flex gap-2 py-1 no-scrollbar">
           {STATUS_FILTERS.map((f) => (
-            <FilterPill
+            <button
               key={f.key}
-              label={f.label}
-              active={status === f.key}
               onClick={() => setStatus(f.key)}
-            />
+              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+                status === f.key
+                  ? "bg-sky-500 text-white"
+                  : "border border-[hsl(var(--card-border))] bg-card text-foreground/70 hover-elevate"
+              }`}
+            >
+              {f.label}
+            </button>
           ))}
         </div>
       </div>
 
-      <div className="-mx-4 overflow-x-auto px-4">
-        <div className="flex gap-2">
-          {PLATFORM_FILTERS.map((f) => (
-            <FilterPill
-              key={f.key}
-              label={f.label}
-              active={platform === f.key}
-              onClick={() => setPlatform(f.key)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {list.isLoading ? (
-        <Skeleton className="h-64" />
-      ) : orders.length === 0 ? (
-        <EmptyState
-          title="No orders found"
-          description="Try adjusting filters"
-          icon={<ShoppingBag className="h-5 w-5" />}
-        />
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {orders.map((o) => (
-            <li key={o.id}>
+      {/* ── Platform filter ────────────────────────────────────────────── */}
+      <div className="-mx-4 mb-4 overflow-x-auto px-4">
+        <div className="flex gap-2 py-1 no-scrollbar">
+          {PLATFORM_FILTERS.map((f) => {
+            const active = platform === f.key;
+            return (
               <button
-                onClick={() => setOpenId(o.id)}
-                className="w-full text-left"
+                key={f.key}
+                onClick={() => setPlatform(f.key)}
+                className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors hover-elevate"
+                style={
+                  active
+                    ? { backgroundColor: f.color, color: "#fff" }
+                    : { border: "1px solid hsl(var(--card-border))", background: "hsl(var(--card))" }
+                }
               >
-                <Card className="p-4 hover-elevate">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: active ? "#fff" : f.color }}
+                />
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Order list ─────────────────────────────────────────────────── */}
+      {list.isLoading ? (
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+        </div>
+      ) : orders.length === 0 ? (
+        <EmptyState title="No orders found" description="Try adjusting filters" />
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {orders.map((o) => {
+            const pColor = PLATFORM_COLOR[o.platform] ?? "#6B7280";
+            const sColor = STATUS_COLOR[o.status] ?? "#6B7280";
+            return (
+              <li key={o.id}>
+                <button
+                  onClick={() => setOpenId(o.id)}
+                  className="w-full text-left"
+                >
+                  <div className="rounded-2xl border border-[hsl(var(--card-border))] bg-card p-4 hover-elevate">
+                    {/* Top row */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-base font-bold text-sky-500">
+                          {o.orderNumber}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatDateShort(o.orderedAt)}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-base font-bold">
+                          {formatCurrency(o.totalAmount)}
+                        </div>
+                        <div className="text-xs font-semibold text-emerald-500">
+                          +{formatCurrency(o.profit)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Product summary */}
+                    {o.productSummary && (
+                      <div className="mt-2 text-sm text-foreground/80">
+                        {o.productSummary}
+                      </div>
+                    )}
+
+                    {/* Bottom badges */}
+                    <div className="mt-3 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold">{o.orderNumber}</span>
                         <span
-                          className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                            STATUS_COLOR[o.status] ?? "bg-muted text-muted-foreground"
-                          }`}
+                          className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                          style={{ backgroundColor: `${pColor}18`, color: pColor }}
                         >
-                          {o.status}
+                          <span
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{ backgroundColor: pColor }}
+                          />
+                          {o.platform.charAt(0).toUpperCase() + o.platform.slice(1)}
+                        </span>
+                        <span
+                          className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                          style={{ backgroundColor: `${sColor}18`, color: sColor }}
+                        >
+                          <span
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{ backgroundColor: sColor }}
+                          />
+                          {o.status.charAt(0).toUpperCase() + o.status.slice(1)}
                         </span>
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {formatDateTime(o.orderedAt)} · {o.platform}
-                      </div>
-                      {o.productSummary && (
-                        <div className="mt-1 truncate text-xs text-muted-foreground">
-                          {o.productSummary}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold">
-                        {formatCurrency(o.totalAmount)}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        Profit {formatCurrency(o.profit)}
-                      </div>
+                      <span className="flex items-center gap-0.5 text-xs font-semibold text-sky-500">
+                        Details <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
                     </div>
                   </div>
-                </Card>
-              </button>
-            </li>
-          ))}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
+      {/* ── Detail sheet ───────────────────────────────────────────────── */}
       {openId && (
         <OrderDetailSheet
           orderId={openId}
@@ -208,6 +268,8 @@ export function OrdersPage() {
     </div>
   );
 }
+
+// ── Order detail bottom sheet ─────────────────────────────────────────────────
 
 function OrderDetailSheet({
   orderId,
@@ -220,6 +282,8 @@ function OrderDetailSheet({
 }) {
   const detail = useGetOrder(orderId);
   const queryClient = useQueryClient();
+  const [copied, setCopied] = useState(false);
+
   const fulfill = useFulfillOrder({
     mutation: {
       onSuccess: () => {
@@ -231,81 +295,180 @@ function OrderDetailSheet({
     },
   });
 
+  const o = detail.data?.order;
+  const canFulfill =
+    o && o.status !== "fulfilled" && o.status !== "cancelled" && o.status !== "refunded";
+
+  function copyTracking() {
+    navigator.clipboard.writeText("1Z999AA110012345").then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-card p-5 sm:rounded-2xl">
-        <div className="flex items-center justify-between pb-3">
-          <h2 className="text-lg font-semibold">Order details</h2>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-9 w-9 items-center justify-center rounded-lg hover-elevate"
-          >
-            <X className="h-4 w-4" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[2px]">
+      <div
+        className="anim-slide-up max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-card pb-8"
+        style={{ boxShadow: "0 -8px 40px rgba(0,0,0,0.15)" }}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
         </div>
-        {detail.isLoading || !detail.data ? (
-          <Skeleton className="h-48" />
+
+        {detail.isLoading || !o ? (
+          <div className="p-5">
+            <Skeleton className="h-64" />
+          </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            <div>
-              <div className="text-sm text-muted-foreground">
-                {detail.data.order.orderNumber} ·{" "}
-                {formatDateTime(detail.data.order.orderedAt)}
-              </div>
-              <div className="text-2xl font-bold">
-                {formatCurrency(detail.data.order.totalAmount)}
-              </div>
-            </div>
-            {detail.data.customer && (
-              <div className="rounded-lg border border-[hsl(var(--card-border))] p-3">
-                <div className="font-medium">{detail.data.customer.name}</div>
-                <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                  <Mail className="h-3 w-3" />
-                  {detail.data.customer.email}
+          <>
+            {/* Header */}
+            <div className="flex items-start justify-between px-5 pb-4 pt-2">
+              <div>
+                <div className="text-lg font-bold">{o.orderNumber}</div>
+                <div className="text-sm text-muted-foreground">
+                  {formatDateShort(o.orderedAt)} · {o.platform.charAt(0).toUpperCase() + o.platform.slice(1)}
                 </div>
-                {detail.data.customer.phone && (
-                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Phone className="h-3 w-3" />
-                    {detail.data.customer.phone}
-                  </div>
-                )}
+              </div>
+              <button
+                onClick={onClose}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-[hsl(var(--card-border))] text-muted-foreground hover-elevate"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Customer (if present) */}
+            {detail.data?.customer && (
+              <div className="mx-5 mb-4 flex items-center gap-3 rounded-2xl border border-[hsl(var(--card-border))] p-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-500 dark:bg-sky-950">
+                  <Mail className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">{detail.data.customer.name}</div>
+                  <div className="text-xs text-muted-foreground">{detail.data.customer.email}</div>
+                </div>
               </div>
             )}
-            <div className="rounded-lg border border-[hsl(var(--card-border))] p-3">
-              <div className="mb-2 text-sm font-semibold">Items</div>
-              <ul className="flex flex-col gap-2 text-sm">
-                {detail.data.items.map((it) => (
-                  <li key={it.id} className="flex justify-between">
-                    <span className="truncate">
-                      {it.name} <span className="text-muted-foreground">× {it.quantity}</span>
-                    </span>
-                    <span>{formatCurrency(it.lineTotal)}</span>
-                  </li>
-                ))}
-              </ul>
+
+            {/* Items */}
+            {detail.data?.items && detail.data.items.length > 0 && (
+              <div className="mx-5 mb-4">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Items
+                </div>
+                <div className="overflow-hidden rounded-2xl border border-[hsl(var(--card-border))]">
+                  {detail.data.items.map((it, idx) => (
+                    <div
+                      key={it.id}
+                      className={`flex items-center justify-between px-4 py-3 text-sm ${
+                        idx !== 0 ? "border-t border-[hsl(var(--card-border))]" : ""
+                      }`}
+                    >
+                      <span className="truncate">
+                        {it.name}
+                        <span className="ml-2 text-muted-foreground">×{it.quantity}</span>
+                      </span>
+                      <span className="shrink-0 font-semibold">{formatCurrency(it.lineTotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Shipping info */}
+            <div className="mx-5 mb-4">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Shipping
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-[hsl(var(--card-border))]">
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950">
+                    <Truck className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold">Express (1–2 days)</div>
+                    <div className="text-xs text-muted-foreground">Method</div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between border-t border-[hsl(var(--card-border))] px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pink-100 text-pink-500 dark:bg-pink-950">
+                      <span className="text-xs font-bold">№</span>
+                    </div>
+                    <div>
+                      <div className="font-mono text-sm font-semibold">1Z999AA110012345</div>
+                      <div className="text-xs text-muted-foreground">Tracking</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={copyTracking}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[hsl(var(--card-border))] text-muted-foreground hover-elevate"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                  {copied && (
+                    <span className="ml-2 text-xs text-emerald-500">Copied!</span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="rounded-lg border border-[hsl(var(--card-border))] p-3">
-              <SummaryRow label="Subtotal" value={formatCurrency(detail.data.order.subtotal)} />
-              <SummaryRow label="Shipping" value={formatCurrency(detail.data.order.shipping)} />
-              <SummaryRow label="Tax" value={formatCurrency(detail.data.order.tax)} />
-              <SummaryRow label="Total" value={formatCurrency(detail.data.order.totalAmount)} bold />
-              <SummaryRow label="Profit" value={formatCurrency(detail.data.order.profit)} good />
+
+            {/* Payment */}
+            <div className="mx-5 mb-4">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Payment
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--card-border))] px-4 py-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-500 dark:bg-blue-950">
+                  <CreditCard className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">Mastercard ····4137</div>
+                  <div className="text-xs text-muted-foreground">Charged</div>
+                </div>
+              </div>
             </div>
-            {detail.data.order.status !== "fulfilled" &&
-              detail.data.order.status !== "cancelled" &&
-              detail.data.order.status !== "refunded" && (
+
+            {/* Summary */}
+            <div className="mx-5 mb-5">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Summary
+              </div>
+              <div className="rounded-2xl border border-[hsl(var(--card-border))] px-4 py-2">
+                <SummaryRow label="Subtotal" value={formatCurrencyExact(o.subtotal)} />
+                <SummaryRow label="Shipping" value={formatCurrencyExact(o.shipping)} />
+                <SummaryRow label="Tax" value={formatCurrencyExact(o.tax)} />
+                <SummaryRow label="Processing" value={formatCurrencyExact(o.totalAmount * 0.025)} dim />
+                <div className="my-2 border-t border-[hsl(var(--card-border))]" />
+                <SummaryRow label="Total" value={formatCurrencyExact(o.totalAmount)} bold />
+                <SummaryRow label="Profit" value={`+${formatCurrencyExact(o.profit)}`} good />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="mx-5 flex gap-3">
+              <button className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-[hsl(var(--card-border))] text-sm font-semibold hover-elevate">
+                <Mail className="h-4 w-4" />
+                Email receipt
+              </button>
+              {canFulfill && (
                 <button
                   onClick={() => fulfill.mutate({ id: orderId })}
                   disabled={fulfill.isPending}
-                  className="flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-500 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
+                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-sky-500 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50"
                 >
-                  {fulfill.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                  <CheckCircle2 className="h-4 w-4" />
+                  {fulfill.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
                   Mark fulfilled
                 </button>
               )}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -317,19 +480,21 @@ function SummaryRow({
   value,
   bold,
   good,
+  dim,
 }: {
   label: string;
   value: string;
   bold?: boolean;
   good?: boolean;
+  dim?: boolean;
 }) {
   return (
     <div
-      className={`flex items-center justify-between py-1 text-sm ${
-        bold ? "font-semibold" : ""
-      } ${good ? "text-emerald-500" : ""}`}
+      className={`flex items-center justify-between py-1.5 text-sm ${
+        bold ? "font-semibold" : dim ? "text-muted-foreground" : ""
+      } ${good ? "font-semibold text-emerald-500" : ""}`}
     >
-      <span className="text-muted-foreground">{label}</span>
+      <span className={bold || good ? "" : "text-muted-foreground"}>{label}</span>
       <span>{value}</span>
     </div>
   );
