@@ -1,0 +1,18 @@
+# Core HTTP
+requests>=2.31.0
+urllib3>=2.0.0
+
+# Retry / backoff
+tenacity>=8.3.0
+
+# Rate limiting
+ratelimit>=2.2.1
+
+# Google Ads official SDK
+google-ads>=24.0.0
+
+# Amazon SP-API
+python-amazon-sp-api>=1.0.0
+
+# Environment variable loading (optional but handy)
+python-dotenv>=1.0.0
