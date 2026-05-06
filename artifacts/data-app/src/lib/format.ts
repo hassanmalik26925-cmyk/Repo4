@@ -59,14 +59,6 @@ export function formatDateTime(iso: string): string {
   }
 }
 
-export function formatK(value: number): string {
-  if (!Number.isFinite(value)) return "$0";
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
-  return `$${value.toFixed(0)}`;
-}
-
 export function formatRelative(iso: string): string {
   try {
     const ms = Date.now() - new Date(iso).getTime();
