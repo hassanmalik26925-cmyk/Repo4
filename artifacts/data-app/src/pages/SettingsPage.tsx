@@ -1,4 +1,10 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   Bell,
   RefreshCw,
@@ -19,6 +25,9 @@ import {
   Calendar,
   DollarSign,
   ChevronRight,
+  Check,
+  Printer,
+  Link,
 } from "lucide-react";
 import {
   useGetSettings,
@@ -32,10 +41,16 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  useDateRange,
+  RANGE_OPTIONS,
+  RANGE_LABELS,
+  type RangeKey,
+} from "../contexts/DateRangeContext";
 import { Skeleton } from "../components/UIPrimitives";
 import { formatRelative } from "../lib/format";
 
-// ── Platform definitions ──────────────────────────────────────────────────────
+// ── Platform icon / colour maps ───────────────────────────────────────────────
 
 const PLATFORM_ICON: Record<string, ReactNode> = {
   shopify: <ShoppingBasket className="h-4 w-4" />,
@@ -56,6 +71,8 @@ const PLATFORM_BG: Record<string, { bg: string; fg: string }> = {
   tiktok: { bg: "#FCE7F3", fg: "#DB2777" },
   supplier: { bg: "#F1F5F9", fg: "#64748B" },
 };
+
+// ── Credential field definitions ──────────────────────────────────────────────
 
 interface FieldDef {
   key: string;
@@ -107,99 +124,184 @@ const PLATFORM_FIELDS: Record<string, FieldDef[]> = {
   ],
 };
 
+// ── Option sets ───────────────────────────────────────────────────────────────
+
+const REFRESH_OPTIONS = [5, 10, 15, 30, 60] as const;
+
+const CURRENCY_OPTIONS = [
+  { code: "USD", label: "US Dollar", symbol: "$" },
+  { code: "EUR", label: "Euro", symbol: "€" },
+  { code: "GBP", label: "British Pound", symbol: "£" },
+  { code: "CAD", label: "Canadian Dollar", symbol: "CA$" },
+  { code: "AUD", label: "Australian Dollar", symbol: "A$" },
+  { code: "JPY", label: "Japanese Yen", symbol: "¥" },
+  { code: "INR", label: "Indian Rupee", symbol: "₹" },
+];
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+function useToast() {
+  const [msg, setMsg] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function toast(text: string) {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setMsg(text);
+    timerRef.current = setTimeout(() => setMsg(null), 2500);
+  }
+
+  return { msg, toast };
+}
+
 // ── Settings page ─────────────────────────────────────────────────────────────
 
 export function SettingsPage() {
   const { user, logout } = useAuth();
+  const { range, setRange } = useDateRange();
   const settings = useGetSettings();
   const update = useUpdateSettings();
   const integrations = useListIntegrations();
+  const { msg: toastMsg, toast } = useToast();
 
   const [name, setName] = useState("");
   const [notif, setNotif] = useState(true);
   const [refresh, setRefresh] = useState(15);
-  const [saved, setSaved] = useState(false);
+  const [currency, setCurrency] = useState("USD");
   const [editProfile, setEditProfile] = useState(false);
 
+  // Inline picker visibility
+  const [showRefreshPicker, setShowRefreshPicker] = useState(false);
+  const [showRangePicker, setShowRangePicker] = useState(false);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+
+  // Sync from API
   useEffect(() => {
     if (settings.data) {
       setName(settings.data.name);
       setNotif(settings.data.notificationsEnabled);
       setRefresh(settings.data.dataRefreshMinutes);
+      setCurrency(settings.data.currency);
+      if (settings.data.defaultRange) {
+        setRange(settings.data.defaultRange as RangeKey);
+      }
     }
   }, [settings.data]);
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  function save(patch: Parameters<typeof update.mutate>[0]["data"], successMsg?: string) {
     update.mutate(
-      { data: { name, notificationsEnabled: notif, dataRefreshMinutes: refresh } },
-      {
-        onSuccess: () => {
-          setSaved(true);
-          setEditProfile(false);
-          setTimeout(() => setSaved(false), 2000);
-        },
-      },
+      { data: patch },
+      { onSuccess: () => toast(successMsg ?? "Saved") },
     );
+  }
+
+  function handleNotifToggle() {
+    const next = !notif;
+    setNotif(next);
+    save({ notificationsEnabled: next }, next ? "Notifications on" : "Notifications off");
+  }
+
+  function handleRefreshPick(val: number) {
+    setRefresh(val);
+    setShowRefreshPicker(false);
+    save({ dataRefreshMinutes: val }, `Refresh set to ${val} min`);
+  }
+
+  function handleRangePick(val: RangeKey) {
+    setRange(val);
+    setShowRangePicker(false);
+    save({ defaultRange: val }, `Date range: ${RANGE_LABELS[val]}`);
+  }
+
+  function handleCurrencyPick(code: string) {
+    setCurrency(code);
+    setShowCurrencyPicker(false);
+    save({ currency: code }, `Currency: ${code}`);
+  }
+
+  function handleExportPDF() {
+    toast("Opening print dialog…");
+    setTimeout(() => window.print(), 300);
+  }
+
+  function handleShareDashboard() {
+    const url = window.location.href;
+    navigator.clipboard
+      .writeText(url)
+      .then(() => toast("Link copied to clipboard!"))
+      .catch(() => {
+        // Fallback: prompt
+        window.prompt("Copy dashboard link:", url);
+      });
+  }
+
+  const submitProfile = (e: FormEvent) => {
+    e.preventDefault();
+    save({ name }, "Profile saved");
+    setEditProfile(false);
   };
+
+  const currencySymbol =
+    CURRENCY_OPTIONS.find((c) => c.code === currency)?.symbol ?? currency;
 
   return (
     <div className="flex flex-col gap-0">
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="py-4">
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">{user?.email}</p>
       </div>
 
-      {/* ── Profile section ────────────────────────────────────────────── */}
+      {/* ── Profile ────────────────────────────────────────────────── */}
       <SectionLabel label="Account" />
       <div className="mb-5 overflow-hidden rounded-2xl border border-[hsl(var(--card-border))] bg-card">
         <button
           onClick={() => setEditProfile((v) => !v)}
-          className="flex w-full items-center justify-between px-4 py-3.5 hover-elevate"
+          className="flex w-full items-center gap-3 px-4 py-3.5 hover-elevate"
         >
-          <div className="flex items-center gap-3">
-            <SettingIcon bg="#DBEAFE" fg="#2563EB">
-              <span className="text-xs font-bold">
-                {name ? name[0]?.toUpperCase() : user?.email?.[0]?.toUpperCase() ?? "U"}
-              </span>
-            </SettingIcon>
-            <div className="text-left">
-              <div className="text-sm font-semibold">{name || user?.email}</div>
-              <div className="text-xs text-muted-foreground">{user?.email}</div>
-            </div>
+          <SettingIcon bg="#DBEAFE" fg="#2563EB">
+            <span className="text-xs font-bold">
+              {(name || user?.email || "U")[0]?.toUpperCase()}
+            </span>
+          </SettingIcon>
+          <div className="flex-1 text-left">
+            <div className="text-sm font-semibold">{name || user?.email}</div>
+            <div className="text-xs text-muted-foreground">{user?.email}</div>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronRight
+            className={`h-4 w-4 text-muted-foreground transition-transform ${
+              editProfile ? "rotate-90" : ""
+            }`}
+          />
         </button>
 
         {editProfile && (
           <form
-            onSubmit={submit}
+            onSubmit={submitProfile}
             className="border-t border-[hsl(var(--card-border))] px-4 pb-4 pt-3"
           >
-            <div className="flex flex-col gap-3">
-              <label className="flex flex-col gap-1 text-xs">
-                <span className="text-muted-foreground">Display name</span>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="rounded-lg border border-[hsl(var(--card-border))] bg-background px-3 py-2 text-sm"
-                />
-              </label>
-              <button
-                type="submit"
-                disabled={update.isPending}
-                className="flex h-9 items-center justify-center gap-2 rounded-full bg-sky-500 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50"
-              >
-                {update.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {saved ? "Saved ✓" : "Save"}
-              </button>
-            </div>
+            <label className="mb-2 flex flex-col gap-1 text-xs">
+              <span className="text-muted-foreground">Display name</span>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="rounded-lg border border-[hsl(var(--card-border))] bg-background px-3 py-2 text-sm"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={update.isPending}
+              className="flex h-9 w-full items-center justify-center gap-2 rounded-full bg-sky-500 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50"
+            >
+              {update.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Save name
+            </button>
           </form>
         )}
       </div>
 
-      {/* ── Integrations ───────────────────────────────────────────────── */}
+      {/* ── Integrations ───────────────────────────────────────────── */}
       <SectionLabel label="Integrations" />
       <div className="mb-5 overflow-hidden rounded-2xl border border-[hsl(var(--card-border))] bg-card">
         {integrations.isLoading ? (
@@ -207,9 +309,9 @@ export function SettingsPage() {
             <Skeleton className="h-32" />
           </div>
         ) : (
-          (integrations.data ?? []).map((i, idx, arr) => (
-            <div key={i.platform}>
-              <IntegrationRow integration={i} />
+          (integrations.data ?? []).map((intg, idx, arr) => (
+            <div key={intg.platform}>
+              <IntegrationRow integration={intg} onToast={toast} />
               {idx < arr.length - 1 && (
                 <div className="mx-4 border-t border-[hsl(var(--card-border))]" />
               )}
@@ -218,98 +320,235 @@ export function SettingsPage() {
         )}
       </div>
 
-      {/* ── Reporting ──────────────────────────────────────────────────── */}
+      {/* ── Reporting ──────────────────────────────────────────────── */}
       <SectionLabel label="Reporting" />
       <div className="mb-5 overflow-hidden rounded-2xl border border-[hsl(var(--card-border))] bg-card">
-        <SettingRow
-          icon={<FileText className="h-4 w-4" />}
+        <ActionRow
+          icon={<Printer className="h-4 w-4" />}
           bg="#DBEAFE"
           fg="#2563EB"
           label="Export PDF Report"
-          value="Summary"
+          value="Print / Save"
+          onClick={handleExportPDF}
         />
         <div className="mx-4 border-t border-[hsl(var(--card-border))]" />
-        <SettingRow
-          icon={<Share2 className="h-4 w-4" />}
+        <ActionRow
+          icon={<Link className="h-4 w-4" />}
           bg="#EDE9FE"
           fg="#7C3AED"
           label="Share Dashboard"
+          value="Copy link"
+          onClick={handleShareDashboard}
         />
       </div>
 
-      {/* ── General ────────────────────────────────────────────────────── */}
+      {/* ── General ────────────────────────────────────────────────── */}
       <SectionLabel label="General" />
       <div className="mb-5 overflow-hidden rounded-2xl border border-[hsl(var(--card-border))] bg-card">
+
         {/* Notifications toggle */}
-        <div className="flex items-center justify-between px-4 py-3.5">
-          <div className="flex items-center gap-3">
-            <SettingIcon bg="#FEF3C7" fg="#D97706">
-              <Bell className="h-4 w-4" />
-            </SettingIcon>
-            <span className="text-sm font-medium">Notifications</span>
-          </div>
+        <div className="flex items-center gap-3 px-4 py-3.5">
+          <SettingIcon bg="#FEF3C7" fg="#D97706">
+            <Bell className="h-4 w-4" />
+          </SettingIcon>
+          <span className="flex-1 text-sm font-medium">Notifications</span>
           <button
-            onClick={() => setNotif((v) => !v)}
-            className={`relative h-6 w-11 rounded-full transition-colors ${
+            onClick={handleNotifToggle}
+            className={`relative h-6 w-11 rounded-full transition-colors duration-200 ${
               notif ? "bg-sky-500" : "bg-muted-foreground/30"
             }`}
           >
             <span
-              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
                 notif ? "translate-x-5" : ""
               }`}
             />
           </button>
         </div>
+
         <div className="mx-4 border-t border-[hsl(var(--card-border))]" />
-        <SettingRow
-          icon={<RefreshCw className="h-4 w-4" />}
-          bg="#D1FAE5"
-          fg="#059669"
-          label="Data Refresh"
-          value={`${refresh} min`}
-        />
+
+        {/* Data Refresh */}
+        <div>
+          <button
+            onClick={() => {
+              setShowRefreshPicker((v) => !v);
+              setShowRangePicker(false);
+              setShowCurrencyPicker(false);
+            }}
+            className="flex w-full items-center gap-3 px-4 py-3.5 hover-elevate"
+          >
+            <SettingIcon bg="#D1FAE5" fg="#059669">
+              <RefreshCw className="h-4 w-4" />
+            </SettingIcon>
+            <span className="flex-1 text-left text-sm font-medium">Data Refresh</span>
+            <span className="text-sm text-muted-foreground">{refresh} min</span>
+            <ChevronRight
+              className={`h-4 w-4 text-muted-foreground transition-transform ${
+                showRefreshPicker ? "rotate-90" : ""
+              }`}
+            />
+          </button>
+          {showRefreshPicker && (
+            <div className="anim-expand border-t border-[hsl(var(--card-border))] px-4 pb-3 pt-2">
+              <p className="mb-2 text-xs text-muted-foreground">
+                How often to auto-refresh data
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {REFRESH_OPTIONS.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => handleRefreshPick(opt)}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+                      refresh === opt
+                        ? "bg-sky-500 text-white"
+                        : "border border-[hsl(var(--card-border))] hover-elevate"
+                    }`}
+                  >
+                    {refresh === opt && <Check className="h-3 w-3" />}
+                    {opt} min
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="mx-4 border-t border-[hsl(var(--card-border))]" />
-        <SettingRow
-          icon={<Calendar className="h-4 w-4" />}
-          bg="#EDE9FE"
-          fg="#7C3AED"
-          label="Date Range"
-          value="Last 30 days"
-        />
+
+        {/* Date Range */}
+        <div>
+          <button
+            onClick={() => {
+              setShowRangePicker((v) => !v);
+              setShowRefreshPicker(false);
+              setShowCurrencyPicker(false);
+            }}
+            className="flex w-full items-center gap-3 px-4 py-3.5 hover-elevate"
+          >
+            <SettingIcon bg="#EDE9FE" fg="#7C3AED">
+              <Calendar className="h-4 w-4" />
+            </SettingIcon>
+            <span className="flex-1 text-left text-sm font-medium">Date Range</span>
+            <span className="text-sm text-muted-foreground">{RANGE_LABELS[range]}</span>
+            <ChevronRight
+              className={`h-4 w-4 text-muted-foreground transition-transform ${
+                showRangePicker ? "rotate-90" : ""
+              }`}
+            />
+          </button>
+          {showRangePicker && (
+            <div className="anim-expand border-t border-[hsl(var(--card-border))] px-4 pb-3 pt-2">
+              <p className="mb-2 text-xs text-muted-foreground">
+                Default date range across all dashboards
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {RANGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => handleRangePick(opt.key)}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+                      range === opt.key
+                        ? "bg-sky-500 text-white"
+                        : "border border-[hsl(var(--card-border))] hover-elevate"
+                    }`}
+                  >
+                    {range === opt.key && <Check className="h-3 w-3" />}
+                    {RANGE_LABELS[opt.key]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="mx-4 border-t border-[hsl(var(--card-border))]" />
-        <SettingRow
-          icon={<DollarSign className="h-4 w-4" />}
-          bg="#D1FAE5"
-          fg="#059669"
-          label="Currency"
-          value="USD"
-        />
+
+        {/* Currency */}
+        <div>
+          <button
+            onClick={() => {
+              setShowCurrencyPicker((v) => !v);
+              setShowRefreshPicker(false);
+              setShowRangePicker(false);
+            }}
+            className="flex w-full items-center gap-3 px-4 py-3.5 hover-elevate"
+          >
+            <SettingIcon bg="#D1FAE5" fg="#059669">
+              <DollarSign className="h-4 w-4" />
+            </SettingIcon>
+            <span className="flex-1 text-left text-sm font-medium">Currency</span>
+            <span className="text-sm text-muted-foreground">
+              {currencySymbol} {currency}
+            </span>
+            <ChevronRight
+              className={`h-4 w-4 text-muted-foreground transition-transform ${
+                showCurrencyPicker ? "rotate-90" : ""
+              }`}
+            />
+          </button>
+          {showCurrencyPicker && (
+            <div className="anim-expand border-t border-[hsl(var(--card-border))] pb-1">
+              {CURRENCY_OPTIONS.map((opt, idx) => (
+                <button
+                  key={opt.code}
+                  onClick={() => handleCurrencyPick(opt.code)}
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-sm hover-elevate ${
+                    idx !== 0 ? "border-t border-[hsl(var(--card-border))]" : ""
+                  }`}
+                >
+                  <span className="w-8 font-mono text-base text-muted-foreground">
+                    {opt.symbol}
+                  </span>
+                  <span className="flex-1 text-left">
+                    {opt.label}
+                  </span>
+                  <span className="text-muted-foreground">{opt.code}</span>
+                  {currency === opt.code && (
+                    <Check className="h-4 w-4 text-sky-500" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ── Sign out ───────────────────────────────────────────────────── */}
+      {/* ── Sign out ────────────────────────────────────────────────── */}
       <button
         onClick={logout}
-        className="mb-5 flex w-full items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 text-red-500 hover-elevate dark:border-red-950 dark:bg-red-950/30"
+        className="mb-5 flex w-full items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 hover-elevate dark:border-red-950 dark:bg-red-950/30"
       >
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 dark:bg-red-950">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-100 text-red-500 dark:bg-red-950">
           <LogOut className="h-4 w-4" />
         </div>
-        <span className="flex-1 text-left text-sm font-semibold">Sign Out</span>
-        <ChevronRight className="h-4 w-4" />
+        <span className="flex-1 text-left text-sm font-semibold text-red-500">Sign Out</span>
+        <ChevronRight className="h-4 w-4 text-red-400" />
       </button>
 
-      {/* Version */}
       <p className="pb-4 text-center text-xs text-muted-foreground">
         CommercePulse v1.0.0
       </p>
+
+      {/* ── Toast ───────────────────────────────────────────────────── */}
+      {toastMsg && (
+        <div className="anim-toast fixed bottom-24 left-1/2 z-[100] -translate-x-1/2 rounded-full border border-[hsl(var(--card-border))] bg-card px-4 py-2 text-sm font-semibold shadow-xl">
+          {toastMsg}
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Integration row ───────────────────────────────────────────────────────────
 
-function IntegrationRow({ integration }: { integration: any }) {
+function IntegrationRow({
+  integration,
+  onToast,
+}: {
+  integration: any;
+  onToast: (msg: string) => void;
+}) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
 
@@ -321,10 +560,26 @@ function IntegrationRow({ integration }: { integration: any }) {
   };
 
   const connect = useConnectIntegration({
-    mutation: { onSuccess: () => { setShowForm(false); invalidate(); } },
+    mutation: {
+      onSuccess: () => {
+        setShowForm(false);
+        invalidate();
+        onToast(`${integration.displayName} connected`);
+      },
+      onError: (err: any) => onToast(err?.message ?? "Connection failed"),
+    },
   });
-  const disconnect = useDisconnectIntegration({ mutation: { onSuccess: invalidate } });
-  const sync = useSyncIntegration({ mutation: { onSuccess: invalidate } });
+  const disconnect = useDisconnectIntegration({
+    mutation: {
+      onSuccess: () => { invalidate(); onToast(`${integration.displayName} disconnected`); },
+    },
+  });
+  const sync = useSyncIntegration({
+    mutation: {
+      onSuccess: () => { invalidate(); onToast("Sync complete"); },
+      onError: () => onToast("Sync failed — check credentials"),
+    },
+  });
 
   const isConnected = integration.status === "connected";
   const isError = integration.status === "error";
@@ -341,7 +596,7 @@ function IntegrationRow({ integration }: { integration: any }) {
         <SettingIcon bg={bg} fg={fg}>
           {PLATFORM_ICON[integration.platform] ?? <Plug className="h-4 w-4" />}
         </SettingIcon>
-        <div className="flex flex-1 flex-col min-w-0">
+        <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold">{integration.displayName}</span>
             <span className={`flex items-center gap-0.5 text-[10px] font-semibold ${statusColor}`}>
@@ -351,11 +606,13 @@ function IntegrationRow({ integration }: { integration: any }) {
           </div>
           {integration.lastSyncAt && (
             <span className="text-[11px] text-muted-foreground">
-              {formatRelative(integration.lastSyncAt)}
+              Synced {formatRelative(integration.lastSyncAt)}
             </span>
           )}
           {integration.lastError && (
-            <span className="truncate text-[11px] text-red-500">{integration.lastError}</span>
+            <span className="truncate text-[11px] text-red-500">
+              {integration.lastError}
+            </span>
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -366,7 +623,13 @@ function IntegrationRow({ integration }: { integration: any }) {
                 disabled={sync.isPending}
                 className="rounded-full border border-[hsl(var(--card-border))] px-3 py-1 text-[11px] font-semibold hover-elevate disabled:opacity-50"
               >
-                {sync.isPending ? "Syncing…" : "Sync now"}
+                {sync.isPending ? (
+                  <span className="flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Syncing…
+                  </span>
+                ) : (
+                  "Sync now"
+                )}
               </button>
               <button
                 onClick={() => disconnect.mutate({ platform: integration.platform })}
@@ -396,7 +659,9 @@ function IntegrationRow({ integration }: { integration: any }) {
           platform={integration.platform}
           pending={connect.isPending}
           error={connect.error?.message}
-          onSubmit={(data) => connect.mutate({ platform: integration.platform, data })}
+          onSubmit={(data) =>
+            connect.mutate({ platform: integration.platform, data })
+          }
         />
       )}
     </div>
@@ -420,7 +685,8 @@ function CredentialForm({
     { key: "apiKey", label: "API key", type: "password" as const },
   ];
   const [values, setValues] = useState<Record<string, string>>({});
-  const set = (key: string, val: string) => setValues((s) => ({ ...s, [key]: val }));
+  const set = (key: string, val: string) =>
+    setValues((s) => ({ ...s, [key]: val }));
 
   return (
     <form
@@ -428,7 +694,7 @@ function CredentialForm({
       className="mx-4 mb-3 rounded-xl border border-[hsl(var(--card-border))] bg-[hsl(var(--muted)/0.4)] p-3"
     >
       <p className="mb-2 text-[11px] text-muted-foreground">
-        Credentials are encrypted with AES-256-GCM before being stored.
+        Credentials are AES-256-GCM encrypted before being stored.
       </p>
       <div className="flex flex-col gap-2">
         {fields.map((f) => (
@@ -463,7 +729,7 @@ function CredentialForm({
   );
 }
 
-// ── UI sub-components ─────────────────────────────────────────────────────────
+// ── Shared sub-components ─────────────────────────────────────────────────────
 
 function SectionLabel({ label }: { label: string }) {
   return (
@@ -492,21 +758,26 @@ function SettingIcon({
   );
 }
 
-function SettingRow({
+function ActionRow({
   icon,
   bg,
   fg,
   label,
   value,
+  onClick,
 }: {
   icon: ReactNode;
   bg: string;
   fg: string;
   label: string;
   value?: string;
+  onClick: () => void;
 }) {
   return (
-    <button className="flex w-full items-center gap-3 px-4 py-3.5 hover-elevate">
+    <button
+      onClick={onClick}
+      className="flex w-full items-center gap-3 px-4 py-3.5 hover-elevate"
+    >
       <SettingIcon bg={bg} fg={fg}>
         {icon}
       </SettingIcon>

@@ -35,8 +35,24 @@ export function useDateRange(): DateRangeValue {
   return ctx;
 }
 
+const STORAGE_KEY = "pulse.date_range";
+
+function readStored(): RangeKey {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v && RANGE_OPTIONS.some((o) => o.key === v)) return v as RangeKey;
+  } catch {}
+  return "30d";
+}
+
 export function DateRangeProvider({ children }: { children: ReactNode }) {
-  const [range, setRange] = useState<RangeKey>("30d");
+  const [range, setRangeState] = useState<RangeKey>(readStored);
+
+  const setRange = (r: RangeKey) => {
+    try { localStorage.setItem(STORAGE_KEY, r); } catch {}
+    setRangeState(r);
+  };
+
   const value = useMemo(() => ({ range, setRange }), [range]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
