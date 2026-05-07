@@ -61,46 +61,41 @@ export function TopBar() {
   const { range, setRange } = useDateRange();
   return (
     <div className="sticky top-0 z-30 border-b border-[hsl(var(--card-border))] bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
+        {/* Left — logo + theme toggle together so both sides feel balanced */}
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-violet-500 text-white">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-violet-500 text-white">
             <ActivityIcon className="h-4 w-4" />
           </span>
           <div className="leading-tight">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Commerce
-            </div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Commerce</div>
             <div className="text-sm font-semibold">Pulse</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative flex items-center gap-1 rounded-xl border border-[hsl(var(--card-border))] bg-background/50 px-1 py-1">
-            <Calendar className="ml-1 h-4 w-4 text-muted-foreground" />
-            {RANGE_OPTIONS.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => setRange(opt.key as RangeKey)}
-                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
-                  range === opt.key
-                    ? "bg-sky-500 text-white"
-                    : "text-muted-foreground hover-elevate"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
           </div>
           <button
             onClick={toggle}
             aria-label="Toggle theme"
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[hsl(var(--card-border))] text-muted-foreground hover-elevate"
+            className="ml-1 flex h-8 w-8 items-center justify-center rounded-lg border border-[hsl(var(--card-border))] text-muted-foreground hover-elevate"
           >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
+            {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
           </button>
+        </div>
+
+        {/* Right — date range picker only */}
+        <div className="relative flex items-center gap-0.5 rounded-xl border border-[hsl(var(--card-border))] bg-background/50 px-1 py-1">
+          <Calendar className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          {RANGE_OPTIONS.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setRange(opt.key as RangeKey)}
+              className={`rounded-lg px-2 py-1 text-xs font-semibold transition-colors ${
+                range === opt.key
+                  ? "bg-sky-500 text-white"
+                  : "text-muted-foreground hover-elevate"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
     </div>

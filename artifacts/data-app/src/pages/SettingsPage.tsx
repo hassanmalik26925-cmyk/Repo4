@@ -36,6 +36,7 @@ import {
   useConnectIntegration,
   useDisconnectIntegration,
   useSyncIntegration,
+  useGetDashboardOverview,
   getListIntegrationsQueryKey,
   getGetIntegrationsHealthQueryKey,
 } from "@workspace/api-client-react";
@@ -161,6 +162,7 @@ export function SettingsPage() {
   const settings = useGetSettings();
   const update = useUpdateSettings();
   const integrations = useListIntegrations();
+  const overview = useGetDashboardOverview({ range });
   const { msg: toastMsg, toast } = useToast();
 
   const [name, setName] = useState("");
@@ -221,8 +223,56 @@ export function SettingsPage() {
   }
 
   function handleExportPDF() {
-    toast("Opening print dialog…");
-    setTimeout(() => window.print(), 300);
+    const d = overview.data;
+    const rangeLabel = RANGE_LABELS[range];
+
+    // Each field is a Metric { value: number, deltaPct: number }
+    const fmtMoney = (m: { value: number } | undefined) =>
+      m == null ? "—" : `$${Number(m.value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const fmtNum = (m: { value: number } | undefined) =>
+      m == null ? "—" : Number(m.value).toLocaleString("en-US");
+    const fmtX = (m: { value: number } | undefined) =>
+      m == null ? "—" : `${Number(m.value).toFixed(2)}x`;
+    const profitColor = (d?.profit?.value ?? 0) >= 0 ? "#16a34a" : "#dc2626";
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Pulse Commerce Report</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 32px; color: #111; background: #fff; }
+  h1 { font-size: 26px; font-weight: 800; margin: 0 0 4px; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 28px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+  .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px 20px; }
+  .card .label { font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #888; margin-bottom: 6px; }
+  .card .value { font-size: 22px; font-weight: 800; }
+  .section { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #888; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+  .footer { margin-top: 40px; font-size: 11px; color: #aaa; text-align: center; }
+  @media print { body { padding: 20px; } }
+</style></head><body>
+<h1>Commerce Pulse — Dashboard Report</h1>
+<p class="sub">Period: ${rangeLabel} &nbsp;·&nbsp; Generated: ${new Date().toLocaleString()} &nbsp;·&nbsp; ${user?.email ?? ""}</p>
+
+<p class="section">Key Metrics</p>
+<div class="grid">
+  <div class="card"><div class="label">Revenue</div><div class="value" style="color:#2563eb">${fmtMoney(d?.revenue)}</div></div>
+  <div class="card"><div class="label">Ad Spend</div><div class="value">${fmtMoney(d?.adSpend)}</div></div>
+  <div class="card"><div class="label">Profit</div><div class="value" style="color:${profitColor}">${fmtMoney(d?.profit)}</div></div>
+  <div class="card"><div class="label">Orders</div><div class="value">${fmtNum(d?.ordersCount)}</div></div>
+  <div class="card"><div class="label">ROAS</div><div class="value" style="color:#16a34a">${fmtX(d?.roas)}</div></div>
+  <div class="card"><div class="label">CPA</div><div class="value">${fmtMoney(d?.cpa)}</div></div>
+</div>
+
+<p class="footer">INSIDE NEXUS &nbsp;·&nbsp; Commerce Pulse v1.0.0</p>
+<script>window.onload = () => { window.print(); }<\/script>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    } else {
+      toast("Allow pop-ups to export PDF");
+    }
   }
 
   function handleShareDashboard() {
@@ -526,8 +576,8 @@ export function SettingsPage() {
         <ChevronRight className="h-4 w-4 text-red-400" />
       </button>
 
-      <p className="pb-4 text-center text-xs text-muted-foreground">
-        CommercePulse v1.0.0
+      <p className="pb-4 text-center text-[10px] tracking-widest text-muted-foreground/50">
+        INSIDE NEXUS
       </p>
 
       {/* ── Toast ───────────────────────────────────────────────────── */}
