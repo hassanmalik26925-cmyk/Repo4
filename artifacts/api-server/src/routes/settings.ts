@@ -64,4 +64,29 @@ router.patch("/settings", async (req, res): Promise<void> => {
   res.json(UpdateSettingsResponse.parse(shape(user)));
 });
 
+let ratesCache: { rates: Record<string, number>; fetchedAt: number } | null =
+  null;
+const RATES_TTL = 60 * 60 * 1000;
+
+router.get(
+  "/settings/exchange-rates",
+  async (req, res): Promise<void> => {
+    const now = Date.now();
+    if (!ratesCache || now - ratesCache.fetchedAt > RATES_TTL) {
+      try {
+        const resp = await fetch("https://open.er-api.com/v6/latest/USD");
+        const data = (await resp.json()) as {
+          rates?: Record<string, number>;
+        };
+        ratesCache = { rates: data.rates ?? {}, fetchedAt: now };
+      } catch (err) {
+        req.log.warn({ err }, "Failed to fetch exchange rates");
+        res.status(502).json({ error: "Failed to fetch exchange rates" });
+        return;
+      }
+    }
+    res.json({ base: "USD", rates: ratesCache!.rates });
+  },
+);
+
 export default router;

@@ -15,6 +15,8 @@ export * from "./connectIntegrationBody";
 export * from "./customer";
 export * from "./dashboardOverview";
 export * from "./errorResponse";
+export * from "./exchangeRates";
+export * from "./exchangeRatesRates";
 export * from "./getDashboardOverviewParams";
 export * from "./getMarketingByChannelParams";
 export * from "./getMarketingSummaryParams";

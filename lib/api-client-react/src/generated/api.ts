@@ -26,6 +26,7 @@ import type {
   Customer,
   DashboardOverview,
   ErrorResponse,
+  ExchangeRates,
   GetDashboardOverviewParams,
   GetMarketingByChannelParams,
   GetMarketingSummaryParams,
@@ -1848,6 +1849,81 @@ export const useUpdateSettings = <
 > => {
   return useMutation(getUpdateSettingsMutationOptions(options));
 };
+
+/**
+ * @summary Live exchange rates base USD (cached 1 h)
+ */
+export const getGetExchangeRatesUrl = () => {
+  return `/api/settings/exchange-rates`;
+};
+
+export const getExchangeRates = async (
+  options?: RequestInit,
+): Promise<ExchangeRates> => {
+  return customFetch<ExchangeRates>(getGetExchangeRatesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetExchangeRatesQueryKey = () => {
+  return [`/api/settings/exchange-rates`] as const;
+};
+
+export const getGetExchangeRatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getExchangeRates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getExchangeRates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetExchangeRatesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getExchangeRates>>
+  > = ({ signal }) => getExchangeRates({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getExchangeRates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetExchangeRatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getExchangeRates>>
+>;
+export type GetExchangeRatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Live exchange rates base USD (cached 1 h)
+ */
+
+export function useGetExchangeRates<
+  TData = Awaited<ReturnType<typeof getExchangeRates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getExchangeRates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetExchangeRatesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getListActivitiesUrl = (params?: ListActivitiesParams) => {
   const normalizedParams = new URLSearchParams();

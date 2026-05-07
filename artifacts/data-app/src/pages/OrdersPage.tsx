@@ -19,7 +19,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useDateRange } from "../contexts/DateRangeContext";
 import { Skeleton, EmptyState } from "../components/UIPrimitives";
-import { formatCurrency, formatCurrencyExact, formatDateShort } from "../lib/format";
+import { formatDateShort } from "../lib/format";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ const PLATFORM_COLOR: Record<string, string> = {
 
 export function OrdersPage() {
   const { range } = useDateRange();
+  const { format: fmt } = useCurrency();
   const [status, setStatus] = useState("all");
   const [platform, setPlatform] = useState("all");
   const [search, setSearch] = useState("");
@@ -90,7 +92,7 @@ export function OrdersPage() {
             Revenue
           </div>
           <div className="mt-1 text-xl font-bold">
-            {summary ? formatCurrency(summary.revenue) : "—"}
+            {summary ? fmt(summary.revenue) : "—"}
           </div>
         </div>
         <div className="rounded-2xl border-2 border-sky-400/60 bg-sky-50 p-3 dark:bg-sky-950/30">
@@ -98,7 +100,7 @@ export function OrdersPage() {
             Profit
           </div>
           <div className="mt-1 text-xl font-bold text-sky-500">
-            {summary ? formatCurrency(summary.profit) : "—"}
+            {summary ? fmt(summary.profit) : "—"}
           </div>
         </div>
         <div className="rounded-2xl border border-[hsl(var(--card-border))] bg-card p-3">
@@ -206,10 +208,10 @@ export function OrdersPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-base font-bold">
-                          {formatCurrency(o.totalAmount)}
+                          {fmt(o.totalAmount)}
                         </div>
                         <div className="text-xs font-semibold text-emerald-500">
-                          +{formatCurrency(o.profit)}
+                          +{fmt(o.profit)}
                         </div>
                       </div>
                     </div>
@@ -280,6 +282,7 @@ function OrderDetailSheet({
   onClose: () => void;
   range: string;
 }) {
+  const { format: fmt, formatExact } = useCurrency();
   const detail = useGetOrder(orderId);
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
@@ -370,7 +373,7 @@ function OrderDetailSheet({
                         {it.name}
                         <span className="ml-2 text-muted-foreground">×{it.quantity}</span>
                       </span>
-                      <span className="shrink-0 font-semibold">{formatCurrency(it.lineTotal)}</span>
+                      <span className="shrink-0 font-semibold">{fmt(it.lineTotal)}</span>
                     </div>
                   ))}
                 </div>
@@ -437,13 +440,13 @@ function OrderDetailSheet({
                 Summary
               </div>
               <div className="rounded-2xl border border-[hsl(var(--card-border))] px-4 py-2">
-                <SummaryRow label="Subtotal" value={formatCurrencyExact(o.subtotal)} />
-                <SummaryRow label="Shipping" value={formatCurrencyExact(o.shipping)} />
-                <SummaryRow label="Tax" value={formatCurrencyExact(o.tax)} />
-                <SummaryRow label="Processing" value={formatCurrencyExact(o.totalAmount * 0.025)} dim />
+                <SummaryRow label="Subtotal" value={formatExact(o.subtotal)} />
+                <SummaryRow label="Shipping" value={formatExact(o.shipping)} />
+                <SummaryRow label="Tax" value={formatExact(o.tax)} />
+                <SummaryRow label="Processing" value={formatExact(o.totalAmount * 0.025)} dim />
                 <div className="my-2 border-t border-[hsl(var(--card-border))]" />
-                <SummaryRow label="Total" value={formatCurrencyExact(o.totalAmount)} bold />
-                <SummaryRow label="Profit" value={`+${formatCurrencyExact(o.profit)}`} good />
+                <SummaryRow label="Total" value={formatExact(o.totalAmount)} bold />
+                <SummaryRow label="Profit" value={`+${formatExact(o.profit)}`} good />
               </div>
             </div>
 

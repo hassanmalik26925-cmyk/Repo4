@@ -407,6 +407,14 @@ export const UpdateSettingsResponse = zod.object({
   currency: zod.string(),
 });
 
+/**
+ * @summary Live exchange rates base USD (cached 1 h)
+ */
+export const GetExchangeRatesResponse = zod.object({
+  base: zod.string(),
+  rates: zod.record(zod.string(), zod.number()),
+});
+
 export const listActivitiesQueryLimitDefault = 20;
 
 export const ListActivitiesQueryParams = zod.object({

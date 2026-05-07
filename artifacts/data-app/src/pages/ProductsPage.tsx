@@ -3,7 +3,8 @@ import { ChevronDown, ChevronUp, Package } from "lucide-react";
 import { useListProducts } from "@workspace/api-client-react";
 import { useDateRange } from "../contexts/DateRangeContext";
 import { Skeleton, EmptyState } from "../components/UIPrimitives";
-import { formatCurrency, formatNumber } from "../lib/format";
+import { formatNumber } from "../lib/format";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 // ── Types & Constants ─────────────────────────────────────────────────────────
 
@@ -28,11 +29,6 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function compactK(n: number): string {
-  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
-  return formatCurrency(n);
-}
 
 function getCategoryColor(category: string): string {
   return CATEGORY_COLORS[category] ?? CATEGORY_COLORS.default;
@@ -49,6 +45,7 @@ const COST_SEGMENTS = [
 ];
 
 function CostBreakdown({ product }: { product: any }) {
+  const { format: fmt, formatCompact } = useCurrency();
   const price = product.price || 1;
   const cogs = product.cogs || 0;
   const adCost = price * 0.12;
@@ -68,7 +65,7 @@ function CostBreakdown({ product }: { product: any }) {
     <div className="mt-3 rounded-xl border border-[hsl(var(--card-border))] bg-[hsl(var(--muted)/0.4)] p-3">
       <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
         <span className="text-[10px] font-semibold uppercase tracking-wider">Per Unit</span>
-        <span className="font-bold text-foreground">{formatCurrency(price)}</span>
+        <span className="font-bold text-foreground">{fmt(price)}</span>
       </div>
 
       {/* Segmented bar */}
@@ -99,7 +96,7 @@ function CostBreakdown({ product }: { product: any }) {
                   s.key === "profit" ? "text-emerald-500" : "text-foreground"
                 }`}
               >
-                {s.key === "profit" ? `+${formatCurrency(s.value)}` : formatCurrency(s.value)}
+                {s.key === "profit" ? `+${fmt(s.value)}` : fmt(s.value)}
               </span>
             </div>
           </div>
@@ -110,7 +107,7 @@ function CostBreakdown({ product }: { product: any }) {
       <div className="flex items-center justify-between border-t border-[hsl(var(--card-border))] pt-2.5 text-xs">
         <div className="text-center">
           <div className="text-[10px] text-muted-foreground">Net per unit</div>
-          <div className="font-bold text-emerald-500">+{formatCurrency(Math.max(0, profit))}</div>
+          <div className="font-bold text-emerald-500">+{fmt(Math.max(0, profit))}</div>
         </div>
         <div className="text-center">
           <div className="text-[10px] text-muted-foreground">Units sold</div>
@@ -118,7 +115,7 @@ function CostBreakdown({ product }: { product: any }) {
         </div>
         <div className="text-center">
           <div className="text-[10px] text-muted-foreground">Total profit</div>
-          <div className="font-bold text-sky-500">{compactK(product.profit)}</div>
+          <div className="font-bold text-sky-500">{formatCompact(product.profit)}</div>
         </div>
       </div>
     </div>
@@ -129,6 +126,7 @@ function CostBreakdown({ product }: { product: any }) {
 
 export function ProductsPage() {
   const { range } = useDateRange();
+  const { format: fmt, formatCompact } = useCurrency();
   const [sort, setSort] = useState<SortKey>("profit");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -171,14 +169,14 @@ export function ProductsPage() {
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Total Revenue
           </div>
-          <div className="mt-1 text-lg font-bold">{compactK(totalRevenue)}</div>
+          <div className="mt-1 text-lg font-bold">{formatCompact(totalRevenue)}</div>
         </div>
         <div className="rounded-2xl border border-[hsl(var(--card-border))] bg-card p-3">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Total Profit
           </div>
           <div className="mt-1 text-lg font-bold text-emerald-500">
-            {compactK(totalProfit)}
+            {formatCompact(totalProfit)}
           </div>
         </div>
         <div className="rounded-2xl border border-[hsl(var(--card-border))] bg-card p-3">
@@ -249,9 +247,9 @@ export function ProductsPage() {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-base font-bold">{compactK(p.revenue)}</div>
+                      <div className="text-base font-bold">{formatCompact(p.revenue)}</div>
                       <div className="text-xs font-semibold text-emerald-500">
-                        +{compactK(p.profit)}
+                        +{formatCompact(p.profit)}
                       </div>
                     </div>
                   </div>
@@ -268,8 +266,8 @@ export function ProductsPage() {
                       value={`${p.roas.toFixed(2)}x`}
                       color="#0EA5E9"
                     />
-                    <MetricCell label="Price" value={formatCurrency(p.price)} />
-                    <MetricCell label="COGS" value={formatCurrency(p.cogs)} />
+                    <MetricCell label="Price" value={fmt(p.price)} />
+                    <MetricCell label="COGS" value={fmt(p.cogs)} />
                   </div>
 
                   {/* Margin progress bar */}

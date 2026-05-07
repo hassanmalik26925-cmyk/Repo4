@@ -32,12 +32,12 @@ import {
   Skeleton,
 } from "../components/UIPrimitives";
 import {
-  formatCurrency,
   formatNumber,
   formatDelta,
   formatRelative,
   formatDateShort,
 } from "../lib/format";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 const PLATFORM_COLOR: Record<string, string> = {
   shopify: C.green,
@@ -48,6 +48,7 @@ const PLATFORM_COLOR: Record<string, string> = {
 
 export function DashboardPage() {
   const { range } = useDateRange();
+  const { format: fmt, currency } = useCurrency();
   const overview = useGetDashboardOverview({ range });
   const trend = useGetRevenueTrend({ range });
   const byPlatform = useGetRevenueByPlatform({ range });
@@ -71,7 +72,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
           label="Revenue"
-          value={data ? formatCurrency(data.revenue.value) : "—"}
+          value={data ? fmt(data.revenue.value) : "—"}
           change={data ? formatDelta(data.revenue.deltaPct).label : undefined}
           positive={data ? formatDelta(data.revenue.deltaPct).positive : true}
           sub={sub}
@@ -81,7 +82,7 @@ export function DashboardPage() {
         />
         <StatCard
           label="Ad Spend"
-          value={data ? formatCurrency(data.adSpend.value) : "—"}
+          value={data ? fmt(data.adSpend.value) : "—"}
           change={data ? formatDelta(data.adSpend.deltaPct).label : undefined}
           positive={data ? !formatDelta(data.adSpend.deltaPct).positive : true}
           sub={sub}
@@ -91,7 +92,7 @@ export function DashboardPage() {
         />
         <StatCard
           label="Profit"
-          value={data ? formatCurrency(data.profit.value) : "—"}
+          value={data ? fmt(data.profit.value) : "—"}
           change={data ? formatDelta(data.profit.deltaPct).label : undefined}
           positive={data ? formatDelta(data.profit.deltaPct).positive : true}
           sub={`Margin ${data ? data.margin.toFixed(1) : "0"}%`}
@@ -108,7 +109,7 @@ export function DashboardPage() {
           positive={
             data ? formatDelta(data.ordersCount.deltaPct).positive : true
           }
-          sub={`AOV ${data ? formatCurrency(data.avgOrderValue.value) : "—"}`}
+          sub={`AOV ${data ? fmt(data.avgOrderValue.value) : "—"}`}
           color={C.violet}
           icon={<ShoppingCart className="h-4 w-4" />}
           loading={overview.isLoading}
@@ -124,7 +125,7 @@ export function DashboardPage() {
         />
         <StatCard
           label="CPA"
-          value={data ? formatCurrency(data.cpa.value) : "—"}
+          value={data ? fmt(data.cpa.value) : "—"}
           change={data ? formatDelta(data.cpa.deltaPct).label : undefined}
           positive={data ? !formatDelta(data.cpa.deltaPct).positive : true}
           color={C.pink}
@@ -133,7 +134,7 @@ export function DashboardPage() {
         />
         <StatCard
           label="AOV"
-          value={data ? formatCurrency(data.avgOrderValue.value) : "—"}
+          value={data ? fmt(data.avgOrderValue.value) : "—"}
           change={
             data ? formatDelta(data.avgOrderValue.deltaPct).label : undefined
           }
@@ -182,7 +183,7 @@ export function DashboardPage() {
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                  tickFormatter={(v) => fmt(v / 1000) + "k"}
                 />
                 <Tooltip content={<ChartTooltip />} />
                 <Area
@@ -212,7 +213,7 @@ export function DashboardPage() {
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                  tickFormatter={(v) => fmt(v / 1000) + "k"}
                 />
                 <YAxis
                   dataKey="platform"

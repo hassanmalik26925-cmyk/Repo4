@@ -13,6 +13,13 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type ExchangeRatesRates = { [key: string]: number };
+
+export interface ExchangeRates {
+  base: string;
+  rates: ExchangeRatesRates;
+}
+
 export interface AuthUser {
   id: string;
   email: string;

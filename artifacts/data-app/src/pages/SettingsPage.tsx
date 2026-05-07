@@ -134,10 +134,17 @@ const CURRENCY_OPTIONS = [
   { code: "USD", label: "US Dollar", symbol: "$" },
   { code: "EUR", label: "Euro", symbol: "€" },
   { code: "GBP", label: "British Pound", symbol: "£" },
+  { code: "SAR", label: "Saudi Riyal", symbol: "﷼" },
+  { code: "AED", label: "UAE Dirham", symbol: "د.إ" },
   { code: "CAD", label: "Canadian Dollar", symbol: "CA$" },
   { code: "AUD", label: "Australian Dollar", symbol: "A$" },
   { code: "JPY", label: "Japanese Yen", symbol: "¥" },
   { code: "INR", label: "Indian Rupee", symbol: "₹" },
+  { code: "SGD", label: "Singapore Dollar", symbol: "S$" },
+  { code: "HKD", label: "Hong Kong Dollar", symbol: "HK$" },
+  { code: "CHF", label: "Swiss Franc", symbol: "Fr" },
+  { code: "MXN", label: "Mexican Peso", symbol: "MX$" },
+  { code: "BRL", label: "Brazilian Real", symbol: "R$" },
 ];
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -600,7 +607,7 @@ export function SettingsPage() {
 
       {/* ── Toast ───────────────────────────────────────────────────── */}
       {toastMsg && (
-        <div className="anim-toast fixed left-1/2 top-1/2 z-[100] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[hsl(var(--card-border))] bg-card px-5 py-2.5 text-sm font-semibold shadow-2xl">
+        <div className="anim-toast fixed bottom-8 left-1/2 z-[100] -translate-x-1/2 rounded-full border border-[hsl(var(--card-border))] bg-card px-5 py-2.5 text-sm font-semibold shadow-2xl">
           {toastMsg}
         </div>
       )}

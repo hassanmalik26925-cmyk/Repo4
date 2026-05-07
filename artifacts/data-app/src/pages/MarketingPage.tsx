@@ -6,7 +6,8 @@ import {
 } from "@workspace/api-client-react";
 import { useDateRange, RANGE_LABELS } from "../contexts/DateRangeContext";
 import { Skeleton, EmptyState } from "../components/UIPrimitives";
-import { formatCurrency, formatNumber } from "../lib/format";
+import { formatNumber } from "../lib/format";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -42,15 +43,12 @@ function roasColor(roas: number): string {
   return "#EF4444";
 }
 
-function compactK(n: number): string {
-  if (Math.abs(n) >= 1000) return `$${(n / 1000).toFixed(1)}K`;
-  return formatCurrency(n);
-}
 
 // ── Marketing page ────────────────────────────────────────────────────────────
 
 export function MarketingPage() {
   const { range } = useDateRange();
+  const { format: fmt, formatCompact } = useCurrency();
   const [sort, setSort] = useState<SortKey>("roas");
 
   const summary = useGetMarketingSummary({ range });
@@ -82,10 +80,10 @@ export function MarketingPage() {
       {/* ── Summary stats ──────────────────────────────────────────────── */}
       <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
-          { label: "Ad Spend", value: s ? compactK(s.adSpend) : "—", accent: false },
-          { label: "Ad Revenue", value: s ? compactK(s.adRevenue) : "—", accent: true },
+          { label: "Ad Spend", value: s ? formatCompact(s.adSpend) : "—", accent: false },
+          { label: "Ad Revenue", value: s ? formatCompact(s.adRevenue) : "—", accent: true },
           { label: "ROAS", value: s ? `${s.roas.toFixed(2)}x` : "—", accent: true },
-          { label: "CPA", value: s ? formatCurrency(s.cpa) : "—", accent: false },
+          { label: "CPA", value: s ? fmt(s.cpa) : "—", accent: false },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -179,9 +177,9 @@ export function MarketingPage() {
                   {/* Metrics grid */}
                   <div className="mt-3 grid grid-cols-4 gap-1">
                     {[
-                      { key: "spend", label: "SPEND", value: compactK(c.spend) },
-                      { key: "revenue", label: "REVENUE", value: compactK(c.revenue) },
-                      { key: "cpc", label: "CPA", value: formatCurrency(c.cpa) },
+                      { key: "spend", label: "SPEND", value: formatCompact(c.spend) },
+                      { key: "revenue", label: "REVENUE", value: formatCompact(c.revenue) },
+                      { key: "cpc", label: "CPA", value: fmt(c.cpa) },
                       { key: "roas", label: "CONV.", value: formatNumber(c.conversions) },
                     ].map((m) => {
                       const isActive = sort === m.key;
