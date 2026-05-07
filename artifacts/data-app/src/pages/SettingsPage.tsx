@@ -208,7 +208,8 @@ export function SettingsPage() {
   function handleRefreshPick(val: number) {
     setRefresh(val);
     setShowRefreshPicker(false);
-    save({ dataRefreshMinutes: val }, `Refresh set to ${val} min`);
+    try { localStorage.setItem("pulse.data_refresh", String(val)); } catch {}
+    save({ dataRefreshMinutes: val }, `Refresh every ${val} min — takes effect on next reload`);
   }
 
   function handleRangePick(val: RangeKey) {
