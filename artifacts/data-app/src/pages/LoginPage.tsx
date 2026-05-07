@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Activity as ActivityIcon, Loader2 } from "lucide-react";
 import { useLogin, useRegister } from "@workspace/api-client-react";
 import { useAuth } from "../contexts/AuthContext";
+import { friendlyError } from "../lib/errors";
 
 type Mode = "login" | "register";
 
@@ -19,7 +20,7 @@ export function LoginPage() {
         setSession(data.token, data.user);
       },
       onError: (err: Error) => {
-        setError(err.message || "Sign in failed");
+        setError(friendlyError(err));
       },
     },
   });
@@ -29,7 +30,7 @@ export function LoginPage() {
         setSession(data.token, data.user);
       },
       onError: (err: Error) => {
-        setError(err.message || "Sign up failed");
+        setError(friendlyError(err));
       },
     },
   });

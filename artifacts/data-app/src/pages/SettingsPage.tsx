@@ -50,6 +50,7 @@ import {
 } from "../contexts/DateRangeContext";
 import { Skeleton } from "../components/UIPrimitives";
 import { formatRelative } from "../lib/format";
+import { friendlyError } from "../lib/errors";
 
 // ── Platform icon / colour maps ───────────────────────────────────────────────
 
@@ -539,6 +540,22 @@ export function SettingsPage() {
           </button>
           {showCurrencyPicker && (
             <div className="anim-expand border-t border-[hsl(var(--card-border))] pb-1">
+              {(() => {
+                const connectedStore = (integrations.data ?? []).find(
+                  (i: any) =>
+                    ["shopify", "woocommerce", "amazon"].includes(i.platform) &&
+                    i.status === "connected",
+                );
+                return connectedStore ? (
+                  <p className="px-4 pb-1 pt-2 text-[11px] text-sky-500">
+                    Auto-detected from {connectedStore.displayName} — select below to override
+                  </p>
+                ) : (
+                  <p className="px-4 pb-1 pt-2 text-[11px] text-muted-foreground">
+                    Connect a store (Shopify, WooCommerce, Amazon) to auto-detect
+                  </p>
+                );
+              })()}
               {CURRENCY_OPTIONS.map((opt, idx) => (
                 <button
                   key={opt.code}
@@ -582,7 +599,7 @@ export function SettingsPage() {
 
       {/* ── Toast ───────────────────────────────────────────────────── */}
       {toastMsg && (
-        <div className="anim-toast fixed bottom-24 left-1/2 z-[100] -translate-x-1/2 rounded-full border border-[hsl(var(--card-border))] bg-card px-4 py-2 text-sm font-semibold shadow-xl">
+        <div className="anim-toast fixed left-1/2 top-1/2 z-[100] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[hsl(var(--card-border))] bg-card px-5 py-2.5 text-sm font-semibold shadow-2xl">
           {toastMsg}
         </div>
       )}
@@ -601,6 +618,7 @@ function IntegrationRow({
 }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [connectErr, setConnectErr] = useState<string | null>(null);
 
   const { bg, fg } = PLATFORM_BG[integration.platform] ?? { bg: "#F1F5F9", fg: "#64748B" };
 
@@ -616,7 +634,7 @@ function IntegrationRow({
         invalidate();
         onToast(`${integration.displayName} connected`);
       },
-      onError: (err: any) => onToast(err?.message ?? "Connection failed"),
+      onError: (err: any) => setConnectErr(friendlyError(err)),
     },
   });
   const disconnect = useDisconnectIntegration({
@@ -627,7 +645,7 @@ function IntegrationRow({
   const sync = useSyncIntegration({
     mutation: {
       onSuccess: () => { invalidate(); onToast("Sync complete"); },
-      onError: () => onToast("Sync failed — check credentials"),
+      onError: (err: any) => onToast(friendlyError(err)),
     },
   });
 
@@ -660,8 +678,8 @@ function IntegrationRow({
             </span>
           )}
           {integration.lastError && (
-            <span className="truncate text-[11px] text-red-500">
-              {integration.lastError}
+            <span className="text-[11px] text-red-500 line-clamp-2">
+              {friendlyError(integration.lastError)}
             </span>
           )}
         </div>
@@ -691,7 +709,7 @@ function IntegrationRow({
             </>
           ) : (
             <button
-              onClick={() => setShowForm((s) => !s)}
+              onClick={() => { setShowForm((s) => !s); setConnectErr(null); }}
               className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${
                 showForm
                   ? "bg-muted text-foreground"
@@ -708,10 +726,11 @@ function IntegrationRow({
         <CredentialForm
           platform={integration.platform}
           pending={connect.isPending}
-          error={connect.error?.message}
-          onSubmit={(data) =>
-            connect.mutate({ platform: integration.platform, data })
-          }
+          error={connectErr ?? undefined}
+          onSubmit={(data) => {
+            setConnectErr(null);
+            connect.mutate({ platform: integration.platform, data });
+          }}
         />
       )}
     </div>
