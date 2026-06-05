@@ -58,9 +58,17 @@ const PLATFORM_ICON: Record<string, ReactNode> = {
   shopify: <ShoppingBasket className="h-4 w-4" />,
   woocommerce: <Globe className="h-4 w-4" />,
   amazon: <ShoppingCart className="h-4 w-4" />,
+  ebay: <ShoppingCart className="h-4 w-4" />,
   meta_ads: <Facebook className="h-4 w-4" />,
   google_ads: <Globe className="h-4 w-4" />,
   tiktok: <Video className="h-4 w-4" />,
+  pinterest: <Share2 className="h-4 w-4" />,
+  snapchat: <Video className="h-4 w-4" />,
+  microsoft_ads: <Globe className="h-4 w-4" />,
+  klaviyo: <FileText className="h-4 w-4" />,
+  stripe: <DollarSign className="h-4 w-4" />,
+  paypal: <DollarSign className="h-4 w-4" />,
+  shipstation: <Package className="h-4 w-4" />,
   supplier: <Package className="h-4 w-4" />,
 };
 
@@ -68,10 +76,37 @@ const PLATFORM_BG: Record<string, { bg: string; fg: string }> = {
   shopify: { bg: "#D1FAE5", fg: "#059669" },
   woocommerce: { bg: "#EDE9FE", fg: "#7C3AED" },
   amazon: { bg: "#FEF3C7", fg: "#D97706" },
+  ebay: { bg: "#DBEAFE", fg: "#2563EB" },
   meta_ads: { bg: "#DBEAFE", fg: "#2563EB" },
   google_ads: { bg: "#FEE2E2", fg: "#DC2626" },
   tiktok: { bg: "#FCE7F3", fg: "#DB2777" },
+  pinterest: { bg: "#FEE2E2", fg: "#E60023" },
+  snapchat: { bg: "#FEF9C3", fg: "#CA8A04" },
+  microsoft_ads: { bg: "#DBEAFE", fg: "#0078D4" },
+  klaviyo: { bg: "#F3E8FF", fg: "#7C3AED" },
+  stripe: { bg: "#EEF2FF", fg: "#4F46E5" },
+  paypal: { bg: "#DBEAFE", fg: "#003087" },
+  shipstation: { bg: "#D1FAE5", fg: "#059669" },
   supplier: { bg: "#F1F5F9", fg: "#64748B" },
+};
+
+// ── Platform category labels ──────────────────────────────────────────────────
+const PLATFORM_CATEGORY: Record<string, string> = {
+  shopify: "Store",
+  woocommerce: "Store",
+  amazon: "Store",
+  ebay: "Store",
+  meta_ads: "Ads",
+  google_ads: "Ads",
+  tiktok: "Ads",
+  pinterest: "Ads",
+  snapchat: "Ads",
+  microsoft_ads: "Ads",
+  klaviyo: "Email",
+  stripe: "Payments",
+  paypal: "Payments",
+  shipstation: "Shipping",
+  supplier: "Supplier",
 };
 
 // ── Credential field definitions ──────────────────────────────────────────────
@@ -102,6 +137,12 @@ const PLATFORM_FIELDS: Record<string, FieldDef[]> = {
     { key: "sellerId", label: "Seller ID", placeholder: "A3…" },
     { key: "region", label: "Region (optional)", placeholder: "us-east-1", optional: true },
   ],
+  ebay: [
+    { key: "clientId", label: "Client ID (App ID)", placeholder: "MyApp-…" },
+    { key: "clientSecret", label: "Client secret (Cert ID)", type: "password" },
+    { key: "refreshToken", label: "User refresh token", placeholder: "v^1.1#…", type: "password" },
+    { key: "marketplaceId", label: "Marketplace (optional)", placeholder: "EBAY_US", optional: true },
+  ],
   meta_ads: [
     { key: "accessToken", label: "Access token", placeholder: "EAA…", type: "password" },
     { key: "accountId", label: "Ad account ID", placeholder: "act_123456789" },
@@ -117,6 +158,39 @@ const PLATFORM_FIELDS: Record<string, FieldDef[]> = {
   tiktok: [
     { key: "accessToken", label: "Access token", type: "password" },
     { key: "advertiserId", label: "Advertiser ID", placeholder: "7…" },
+  ],
+  pinterest: [
+    { key: "accessToken", label: "Access token", type: "password" },
+    { key: "adAccountId", label: "Ad account ID", placeholder: "549755813…" },
+  ],
+  snapchat: [
+    { key: "clientId", label: "Client ID", placeholder: "…" },
+    { key: "clientSecret", label: "Client secret", type: "password" },
+    { key: "refreshToken", label: "Refresh token", type: "password" },
+    { key: "organizationId", label: "Organization ID", placeholder: "…" },
+    { key: "adAccountId", label: "Ad account ID", placeholder: "…" },
+  ],
+  microsoft_ads: [
+    { key: "clientId", label: "Client (application) ID", placeholder: "…" },
+    { key: "clientSecret", label: "Client secret", type: "password" },
+    { key: "refreshToken", label: "Refresh token", type: "password" },
+    { key: "customerId", label: "Customer ID", placeholder: "…" },
+    { key: "accountId", label: "Account ID", placeholder: "…" },
+    { key: "developerToken", label: "Developer token", type: "password" },
+  ],
+  klaviyo: [
+    { key: "apiKey", label: "Private API key", placeholder: "pk_…", type: "password" },
+  ],
+  stripe: [
+    { key: "secretKey", label: "Secret key", placeholder: "sk_live_… or sk_test_…", type: "password" },
+  ],
+  paypal: [
+    { key: "clientId", label: "Client ID", placeholder: "…" },
+    { key: "clientSecret", label: "Client secret", type: "password" },
+  ],
+  shipstation: [
+    { key: "apiKey", label: "API key", type: "password" },
+    { key: "apiSecret", label: "API secret", type: "password" },
   ],
   supplier: [
     { key: "baseUrl", label: "API base URL", placeholder: "https://api.supplier.com/v1" },
@@ -673,8 +747,13 @@ function IntegrationRow({
           {PLATFORM_ICON[integration.platform] ?? <Plug className="h-4 w-4" />}
         </SettingIcon>
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold">{integration.displayName}</span>
+            {PLATFORM_CATEGORY[integration.platform] && (
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                {PLATFORM_CATEGORY[integration.platform]}
+              </span>
+            )}
             <span className={`flex items-center gap-0.5 text-[10px] font-semibold ${statusColor}`}>
               <StatusIcon className="h-3 w-3" />
               {integration.status}

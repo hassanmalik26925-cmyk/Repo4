@@ -18,6 +18,7 @@ tags:
   - name: integrations
   - name: settings
   - name: activities
+  - name: insights
 paths:
   /healthz:
     get:
@@ -470,6 +471,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/ExchangeRates"
 
+  /insights:
+    get:
+      operationId: getInsights
+      tags: [insights]
+      summary: AI-powered business insights and recommendations
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Insights list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsightsResponse"
+
   /activities:
     get:
       operationId: listActivities
@@ -843,6 +861,44 @@ components:
         accessToken: { type: string }
         shopDomain: { type: string }
         accountId: { type: string }
+        secretKey: { type: string }
+        clientId: { type: string }
+        clientSecret: { type: string }
+        refreshToken: { type: string }
+        customerId: { type: string }
+        developerToken: { type: string }
+        advertiserId: { type: string }
+        adAccountId: { type: string }
+        organizationId: { type: string }
+        marketplaceId: { type: string }
+        sellerId: { type: string }
+        storeUrl: { type: string }
+        consumerKey: { type: string }
+        consumerSecret: { type: string }
+        baseUrl: { type: string }
+        loginCustomerId: { type: string }
+        region: { type: string }
+        sandbox: { type: boolean }
+
+    Insight:
+      type: object
+      required: [id, severity, title, description]
+      properties:
+        id: { type: string }
+        severity: { type: string }
+        title: { type: string }
+        description: { type: string }
+        metric: { type: string }
+        action: { type: string }
+
+    InsightsResponse:
+      type: object
+      required: [insights]
+      properties:
+        insights:
+          type: array
+          items:
+            $ref: "#/components/schemas/Insight"
 
     IntegrationsHealth:
       type: object

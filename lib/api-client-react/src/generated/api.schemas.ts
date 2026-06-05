@@ -220,6 +220,37 @@ export interface ConnectIntegrationBody {
   accessToken?: string;
   shopDomain?: string;
   accountId?: string;
+  secretKey?: string;
+  clientId?: string;
+  clientSecret?: string;
+  refreshToken?: string;
+  customerId?: string;
+  developerToken?: string;
+  advertiserId?: string;
+  adAccountId?: string;
+  organizationId?: string;
+  marketplaceId?: string;
+  sellerId?: string;
+  storeUrl?: string;
+  consumerKey?: string;
+  consumerSecret?: string;
+  baseUrl?: string;
+  loginCustomerId?: string;
+  region?: string;
+  sandbox?: boolean;
+}
+
+export interface Insight {
+  id: string;
+  severity: string;
+  title: string;
+  description: string;
+  metric?: string;
+  action?: string;
+}
+
+export interface InsightsResponse {
+  insights: Insight[];
 }
 
 export type IntegrationsHealthIntegrationsItem = {
@@ -309,6 +340,10 @@ export type ListCampaignsParams = {
 };
 
 export type GetMarketingByChannelParams = {
+  range?: RangeParamParameter;
+};
+
+export type GetInsightsParams = {
   range?: RangeParamParameter;
 };
 

@@ -327,6 +327,24 @@ export const ConnectIntegrationBody = zod.object({
   accessToken: zod.string().optional(),
   shopDomain: zod.string().optional(),
   accountId: zod.string().optional(),
+  secretKey: zod.string().optional(),
+  clientId: zod.string().optional(),
+  clientSecret: zod.string().optional(),
+  refreshToken: zod.string().optional(),
+  customerId: zod.string().optional(),
+  developerToken: zod.string().optional(),
+  advertiserId: zod.string().optional(),
+  adAccountId: zod.string().optional(),
+  organizationId: zod.string().optional(),
+  marketplaceId: zod.string().optional(),
+  sellerId: zod.string().optional(),
+  storeUrl: zod.string().optional(),
+  consumerKey: zod.string().optional(),
+  consumerSecret: zod.string().optional(),
+  baseUrl: zod.string().optional(),
+  loginCustomerId: zod.string().optional(),
+  region: zod.string().optional(),
+  sandbox: zod.boolean().optional(),
 });
 
 export const ConnectIntegrationResponse = zod.object({
@@ -413,6 +431,30 @@ export const UpdateSettingsResponse = zod.object({
 export const GetExchangeRatesResponse = zod.object({
   base: zod.string(),
   rates: zod.record(zod.string(), zod.number()),
+});
+
+/**
+ * @summary AI-powered business insights and recommendations
+ */
+export const getInsightsQueryRangeDefault = `30d`;
+
+export const GetInsightsQueryParams = zod.object({
+  range: zod
+    .enum(["7d", "14d", "30d", "90d"])
+    .default(getInsightsQueryRangeDefault),
+});
+
+export const GetInsightsResponse = zod.object({
+  insights: zod.array(
+    zod.object({
+      id: zod.string(),
+      severity: zod.string(),
+      title: zod.string(),
+      description: zod.string(),
+      metric: zod.string().optional(),
+      action: zod.string().optional(),
+    }),
+  ),
 });
 
 export const listActivitiesQueryLimitDefault = 20;

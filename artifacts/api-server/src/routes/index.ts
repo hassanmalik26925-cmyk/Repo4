@@ -9,6 +9,7 @@ import marketingRouter from "./marketing";
 import integrationsRouter from "./integrations";
 import settingsRouter from "./settings";
 import activitiesRouter from "./activities";
+import insightsRouter from "./insights";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(marketingRouter);
 router.use(integrationsRouter);
 router.use(settingsRouter);
 router.use(activitiesRouter);
+router.use(insightsRouter);
 
 export default router;

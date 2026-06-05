@@ -16,12 +16,20 @@ import {
   Gauge,
   Zap,
   TrendingUp,
+  Brain,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  XCircle,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import {
   useGetDashboardOverview,
   useGetRevenueTrend,
   useGetRevenueByPlatform,
   useListActivities,
+  useGetInsights,
 } from "@workspace/api-client-react";
 import { useDateRange, RANGE_LABELS } from "../contexts/DateRangeContext";
 import {
@@ -38,6 +46,7 @@ import {
   formatDateShort,
 } from "../lib/format";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { useState } from "react";
 
 const PLATFORM_COLOR: Record<string, string> = {
   shopify: C.green,
@@ -46,13 +55,115 @@ const PLATFORM_COLOR: Record<string, string> = {
   manual: C.slate,
 };
 
+// ── Insight card ──────────────────────────────────────────────────────────────
+
+const SEVERITY_CONFIG = {
+  critical: {
+    icon: <XCircle className="h-4 w-4" />,
+    color: "text-red-500",
+    bg: "bg-red-50 dark:bg-red-950/30",
+    border: "border-red-200 dark:border-red-800",
+    badge: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  },
+  warning: {
+    icon: <AlertTriangle className="h-4 w-4" />,
+    color: "text-amber-500",
+    bg: "bg-amber-50 dark:bg-amber-950/30",
+    border: "border-amber-200 dark:border-amber-800",
+    badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  },
+  positive: {
+    icon: <CheckCircle2 className="h-4 w-4" />,
+    color: "text-emerald-500",
+    bg: "bg-emerald-50 dark:bg-emerald-950/30",
+    border: "border-emerald-200 dark:border-emerald-800",
+    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  },
+  info: {
+    icon: <Info className="h-4 w-4" />,
+    color: "text-sky-500",
+    bg: "bg-sky-50 dark:bg-sky-950/30",
+    border: "border-sky-200 dark:border-sky-800",
+    badge: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
+  },
+} as const;
+
+interface InsightItem {
+  id: string;
+  severity: string;
+  title: string;
+  description: string;
+  metric?: string;
+  action?: string;
+}
+
+function InsightCard({ insight }: { insight: InsightItem }) {
+  const [expanded, setExpanded] = useState(false);
+  const sev = (insight.severity as keyof typeof SEVERITY_CONFIG) in SEVERITY_CONFIG
+    ? (insight.severity as keyof typeof SEVERITY_CONFIG)
+    : "info";
+  const cfg = SEVERITY_CONFIG[sev];
+
+  return (
+    <div
+      className={`rounded-xl border p-3 ${cfg.bg} ${cfg.border} transition-all`}
+    >
+      <button
+        className="flex w-full items-start gap-3 text-left"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <span className={`mt-0.5 shrink-0 ${cfg.color}`}>{cfg.icon}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold leading-tight">
+              {insight.title}
+            </span>
+            {insight.metric && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${cfg.badge}`}
+              >
+                {insight.metric}
+              </span>
+            )}
+          </div>
+          {!expanded && (
+            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+              {insight.description}
+            </p>
+          )}
+        </div>
+        {expanded ? (
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+        )}
+      </button>
+      {expanded && (
+        <div className="mt-2 ml-7">
+          <p className="text-xs text-foreground/80 leading-relaxed">
+            {insight.description}
+          </p>
+          {insight.action && (
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/70 dark:bg-black/20 px-2.5 py-1 text-[11px] font-semibold text-foreground/70 border border-current/10">
+              → {insight.action}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export function DashboardPage() {
   const { range } = useDateRange();
-  const { format: fmt, currency } = useCurrency();
+  const { format: fmt } = useCurrency();
   const overview = useGetDashboardOverview({ range });
   const trend = useGetRevenueTrend({ range });
   const byPlatform = useGetRevenueByPlatform({ range });
   const activities = useListActivities({ limit: 8 });
+  const insights = useGetInsights({ range });
 
   const data = overview.data;
   const sub = RANGE_LABELS[range];
@@ -62,6 +173,8 @@ export function DashboardPage() {
     revenue: p.revenue,
   }));
 
+  const insightList = (insights.data as any)?.insights ?? [];
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -69,6 +182,7 @@ export function DashboardPage() {
         <p className="text-sm text-muted-foreground">{sub}</p>
       </div>
 
+      {/* ── KPI grid ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
           label="Revenue"
@@ -154,6 +268,35 @@ export function DashboardPage() {
         />
       </div>
 
+      {/* ── AI Insights panel ───────────────────────────────────────────── */}
+      <Card className="p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Brain className="h-4 w-4 text-violet-500" />
+          <div className="text-sm font-semibold">Business Insights</div>
+          <span className="ml-auto rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+            AI Engine
+          </span>
+        </div>
+        {insights.isLoading ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-12 w-full rounded-xl" />
+          </div>
+        ) : insightList.length === 0 ? (
+          <div className="rounded-xl border border-dashed py-6 text-center text-sm text-muted-foreground">
+            No insights yet — connect a store or ad platform to get started
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {insightList.map((insight: InsightItem) => (
+              <InsightCard key={insight.id} insight={insight} />
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* ── Revenue trend ───────────────────────────────────────────────── */}
       <Card className="p-4">
         <div className="mb-3 flex items-center justify-between">
           <div>
@@ -200,6 +343,7 @@ export function DashboardPage() {
         </div>
       </Card>
 
+      {/* ── Revenue by platform ─────────────────────────────────────────── */}
       <Card className="p-4">
         <div className="mb-3 text-sm font-semibold">Revenue by platform</div>
         <div className="h-48">
@@ -236,6 +380,7 @@ export function DashboardPage() {
         </div>
       </Card>
 
+      {/* ── Recent activity ─────────────────────────────────────────────── */}
       <Card className="p-4">
         <div className="mb-3 flex items-center justify-between">
           <div className="text-sm font-semibold">Recent activity</div>
