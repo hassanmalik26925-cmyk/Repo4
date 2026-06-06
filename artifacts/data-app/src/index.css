@@ -159,6 +159,22 @@
 @keyframes pulse-slide-up-toast { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 @keyframes pulse-expand { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes ring-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(14, 165, 233, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
+}
+
 @layer utilities {
   .anim-fade { animation: pulse-fade-in 180ms ease-out both; }
   .anim-slide-up { animation: pulse-slide-up 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
@@ -171,4 +187,16 @@
   }
   .hover-elevate:hover::after { background-color: var(--elevate-1); }
   .hover-elevate:active::after { background-color: var(--elevate-2); }
+  .shimmer-bg {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted) / 0.5) 25%,
+      hsl(var(--muted) / 0.8) 50%,
+      hsl(var(--muted) / 0.5) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+  .anim-float { animation: float 3s ease-in-out infinite; }
+  .anim-ring { animation: ring-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 }
