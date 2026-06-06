@@ -2,12 +2,14 @@ import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
   Activity as ActivityIcon, LayoutGrid, ShoppingBag, Megaphone,
-  Package, Settings as SettingsIcon, Sun, Moon, Calendar,
+  Package, Settings as SettingsIcon, Sun, Moon, Calendar, Shield,
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { RANGE_OPTIONS, type RangeKey, useDateRange } from "../contexts/DateRangeContext";
+import { useAuth } from "../contexts/AuthContext";
+import { NotificationBell } from "./NotificationBell";
 
-export type Screen = "dashboard" | "orders" | "marketing" | "products" | "settings";
+export type Screen = "dashboard" | "orders" | "marketing" | "products" | "settings" | "admin";
 
 const navItems: { key: Screen; label: string; icon: ReactNode }[] = [
   { key: "dashboard", label: "Dashboard", icon: <LayoutGrid className="h-[22px] w-[22px]" /> },
@@ -15,6 +17,7 @@ const navItems: { key: Screen; label: string; icon: ReactNode }[] = [
   { key: "marketing", label: "Marketing", icon: <Megaphone className="h-[22px] w-[22px]" /> },
   { key: "products", label: "Products", icon: <Package className="h-[22px] w-[22px]" /> },
   { key: "settings", label: "Settings", icon: <SettingsIcon className="h-[22px] w-[22px]" /> },
+  { key: "admin", label: "Admin", icon: <Shield className="h-[22px] w-[22px]" /> },
 ];
 
 export function TopBar() {
@@ -49,8 +52,10 @@ export function TopBar() {
             {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
           </motion.button>
         </div>
-        <div className="relative flex items-center gap-0.5 rounded-xl border border-[hsl(var(--card-border))] bg-background/50 px-1 py-1">
-          <Calendar className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <div className="relative flex items-center gap-0.5 rounded-xl border border-[hsl(var(--card-border))] bg-background/50 px-1 py-1">
+            <Calendar className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           {RANGE_OPTIONS.map((opt) => (
             <motion.button
               key={opt.key}
@@ -63,6 +68,7 @@ export function TopBar() {
               {opt.label}
             </motion.button>
           ))}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -70,11 +76,13 @@ export function TopBar() {
 }
 
 export function BottomNav({ active, onChange }: { active: Screen; onChange: (s: Screen) => void }) {
+  const { user } = useAuth();
+  const items = user?.role === "admin" ? navItems : navItems.filter((i) => i.key !== "admin");
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[hsl(var(--card-border))] bg-background/95 backdrop-blur-md">
       <div className="mx-auto max-w-[1100px] px-2 sm:px-6">
-        <ul className="grid grid-cols-5 gap-1 py-2 pb-[max(8px,env(safe-area-inset-bottom))]">
-          {navItems.map((item) => {
+        <ul className={`grid gap-1 py-2 pb-[max(8px,env(safe-area-inset-bottom))] ${items.length === 5 ? "grid-cols-5" : "grid-cols-6"}`}>
+          {items.map((item) => {
             const isActive = active === item.key;
             return (
               <li key={item.key}>

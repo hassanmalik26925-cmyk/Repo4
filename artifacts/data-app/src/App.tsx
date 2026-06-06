@@ -9,8 +9,12 @@ import { OrdersPage } from "./pages/OrdersPage";
 import { MarketingPage } from "./pages/MarketingPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { AdminPage } from "./pages/AdminPage";
 import { BottomNav, ScreenContainer, TopBar, type Screen } from "./components/AppShell";
 import { useListIntegrations } from "@workspace/api-client-react";
+import { OnboardingModal } from "./components/OnboardingModal";
+import { ToastContainer } from "./components/ToastContainer";
+import { useSSE } from "./hooks/useSSE";
 
 function NoIntegrationScreen({ onGoToSettings }: { onGoToSettings: () => void }) {
   return (
@@ -46,6 +50,7 @@ function NoIntegrationScreen({ onGoToSettings }: { onGoToSettings: () => void })
 function AuthenticatedApp() {
   const [screen, setScreen] = useState<Screen>("dashboard");
   const integrations = useListIntegrations();
+  useSSE();
 
   const hasConnected =
     integrations.isLoading ||
@@ -64,6 +69,7 @@ function AuthenticatedApp() {
         {screen === "orders" && <OrdersPage />}
         {screen === "marketing" && <MarketingPage />}
         {screen === "products" && <ProductsPage />}
+        {screen === "admin" && <AdminPage />}
       </motion.div>
     </AnimatePresence>
   ) : (
@@ -73,6 +79,8 @@ function AuthenticatedApp() {
   return (
     <CurrencyProvider>
       <div className="min-h-screen bg-background text-foreground">
+        <OnboardingModal />
+        <ToastContainer />
         <TopBar />
         <ScreenContainer>
           <AnimatePresence mode="wait">

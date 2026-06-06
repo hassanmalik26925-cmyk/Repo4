@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
+import passwordResetRouter from "./passwordReset";
 import dashboardRouter from "./dashboard";
 import ordersRouter from "./orders";
 import productsRouter from "./products";
@@ -10,11 +11,16 @@ import integrationsRouter from "./integrations";
 import settingsRouter from "./settings";
 import activitiesRouter from "./activities";
 import insightsRouter from "./insights";
+import notificationsRouter from "./notifications";
+import eventsRouter from "./events";
+import onboardingRouter from "./onboarding";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(passwordResetRouter);
 router.use(dashboardRouter);
 router.use(ordersRouter);
 router.use(productsRouter);
@@ -24,5 +30,9 @@ router.use(integrationsRouter);
 router.use(settingsRouter);
 router.use(activitiesRouter);
 router.use(insightsRouter);
+router.use(notificationsRouter);
+router.use(eventsRouter);
+router.use(onboardingRouter);
+router.use(adminRouter);
 
 export default router;

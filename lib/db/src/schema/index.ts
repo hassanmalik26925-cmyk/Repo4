@@ -5,3 +5,6 @@ export * from "./products";
 export * from "./orders";
 export * from "./marketing";
 export * from "./activities";
+export * from "./notifications";
+export * from "./auditLogs";
+export * from "./resetTokens";

@@ -20,6 +20,7 @@ function shape(user: typeof usersTable.$inferSelect) {
     dataRefreshMinutes: Number(user.dataRefreshMinutes),
     defaultRange: user.defaultRange,
     currency: user.currency,
+    isOnboarded: user.isOnboarded === "true",
   };
 }
 
@@ -52,6 +53,7 @@ router.patch("/settings", async (req, res): Promise<void> => {
   if (parsed.data.defaultRange !== undefined)
     update.defaultRange = parsed.data.defaultRange;
   if (parsed.data.currency !== undefined) update.currency = parsed.data.currency;
+  if (parsed.data.isOnboarded !== undefined) update.isOnboarded = String(parsed.data.isOnboarded);
   const [user] = await db
     .update(usersTable)
     .set(update)

@@ -6,6 +6,7 @@ import { initApiClient } from "./lib/api-setup";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { DateRangeProvider } from "./contexts/DateRangeContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 
 initApiClient();
 
@@ -17,7 +18,7 @@ function getRefetchInterval(): number {
     const parsed = stored ? parseInt(stored, 10) : NaN;
     if (!isNaN(parsed) && parsed > 0) return parsed * 60 * 1000;
   } catch {}
-  return 15 * 60 * 1000; // default 15 minutes
+  return 15 * 60 * 1000;
 }
 
 const queryClient = new QueryClient({
@@ -36,7 +37,9 @@ createRoot(document.getElementById("root")!).render(
     <ThemeProvider>
       <AuthProvider>
         <DateRangeProvider>
-          <App />
+          <NotificationProvider>
+            <App />
+          </NotificationProvider>
         </DateRangeProvider>
       </AuthProvider>
     </ThemeProvider>

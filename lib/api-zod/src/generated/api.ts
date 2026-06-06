@@ -413,6 +413,7 @@ export const UpdateSettingsBody = zod.object({
   dataRefreshMinutes: zod.number().optional(),
   defaultRange: zod.string().optional(),
   currency: zod.string().optional(),
+  isOnboarded: zod.boolean().optional(),
 });
 
 export const UpdateSettingsResponse = zod.object({
@@ -473,3 +474,137 @@ export const ListActivitiesResponseItem = zod.object({
   createdAt: zod.string(),
 });
 export const ListActivitiesResponse = zod.array(ListActivitiesResponseItem);
+
+/**
+ * @summary List user notifications
+ */
+export const listNotificationsQueryLimitDefault = 50;
+
+export const ListNotificationsQueryParams = zod.object({
+  limit: zod.coerce.number().default(listNotificationsQueryLimitDefault),
+});
+
+export const ListNotificationsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      userId: zod.string(),
+      type: zod.string(),
+      title: zod.string(),
+      description: zod.string().nullish(),
+      read: zod.boolean(),
+      createdAt: zod.string(),
+    }),
+  ),
+  unreadCount: zod.number(),
+});
+
+/**
+ * @summary Mark notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const MarkNotificationReadResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Mark all notifications as read
+ */
+export const MarkAllNotificationsReadResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Request password reset
+ */
+export const ForgotPasswordBody = zod.object({
+  email: zod.string(),
+});
+
+export const ForgotPasswordResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Reset password with token
+ */
+export const ResetPasswordBody = zod.object({
+  token: zod.string(),
+  password: zod.string(),
+});
+
+export const ResetPasswordResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Check onboarding status
+ */
+export const GetOnboardingStatusResponse = zod.object({
+  onboarded: zod.boolean(),
+});
+
+/**
+ * @summary Complete onboarding
+ */
+export const CompleteOnboardingResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary List all users (admin only)
+ */
+export const ListAdminUsersResponse = zod.object({
+  users: zod.array(
+    zod.object({
+      id: zod.string(),
+      email: zod.string(),
+      name: zod.string(),
+      role: zod.string(),
+      currency: zod.string().optional(),
+      createdAt: zod.string().optional(),
+    }),
+  ),
+});
+
+/**
+ * @summary Admin dashboard stats
+ */
+export const GetAdminStatsResponse = zod.object({
+  userCount: zod.number(),
+  auditLogCount: zod.number(),
+  todayLogins: zod.number(),
+});
+
+/**
+ * @summary List audit logs
+ */
+export const listAdminAuditLogsQueryLimitDefault = 50;
+
+export const ListAdminAuditLogsQueryParams = zod.object({
+  limit: zod.coerce.number().default(listAdminAuditLogsQueryLimitDefault),
+});
+
+export const ListAdminAuditLogsResponse = zod.object({
+  logs: zod.array(
+    zod.object({
+      id: zod.string(),
+      userId: zod.string().nullish(),
+      action: zod.string(),
+      resource: zod.string().nullish(),
+      resourceId: zod.string().nullish(),
+      ip: zod.string().nullish(),
+      userAgent: zod.string().nullish(),
+      details: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
+});

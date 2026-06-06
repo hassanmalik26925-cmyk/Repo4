@@ -283,6 +283,82 @@ export interface UpdateSettingsBody {
   dataRefreshMinutes?: number;
   defaultRange?: string;
   currency?: string;
+  isOnboarded?: boolean;
+}
+
+export interface SuccessResponse {
+  success: boolean;
+  message?: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationsResponse {
+  items: Notification[];
+  unreadCount: number;
+}
+
+export interface ForgotPasswordBody {
+  email: string;
+}
+
+export interface ResetPasswordBody {
+  token: string;
+  password: string;
+}
+
+export interface OnboardingStatus {
+  onboarded: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  currency?: string;
+  createdAt?: string;
+}
+
+export interface AdminUsersResponse {
+  users: AdminUser[];
+}
+
+export interface AdminStatsResponse {
+  userCount: number;
+  auditLogCount: number;
+  todayLogins: number;
+}
+
+export interface AuditLog {
+  id: string;
+  /** @nullable */
+  userId?: string | null;
+  action: string;
+  /** @nullable */
+  resource?: string | null;
+  /** @nullable */
+  resourceId?: string | null;
+  /** @nullable */
+  ip?: string | null;
+  /** @nullable */
+  userAgent?: string | null;
+  /** @nullable */
+  details?: string | null;
+  createdAt: string;
+}
+
+export interface AuditLogResponse {
+  logs: AuditLog[];
 }
 
 export interface Activity {
@@ -348,5 +424,13 @@ export type GetInsightsParams = {
 };
 
 export type ListActivitiesParams = {
+  limit?: number;
+};
+
+export type ListNotificationsParams = {
+  limit?: number;
+};
+
+export type ListAdminAuditLogsParams = {
   limit?: number;
 };
