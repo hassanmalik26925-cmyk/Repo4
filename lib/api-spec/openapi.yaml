@@ -259,6 +259,142 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ProductPerformance"
+    post:
+      operationId: createProduct
+      tags: [products]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductPerformance"
+
+  /products/{id}:
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductBody"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductPerformance"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /shipping-rates:
+    get:
+      operationId: listShippingRates
+      tags: [shippingRates]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Shipping rates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShippingRate"
+    post:
+      operationId: createShippingRate
+      tags: [shippingRates]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateShippingRateBody"
+      responses:
+        "201":
+          description: Shipping rate created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShippingRate"
+
+  /shipping-rates/{id}:
+    patch:
+      operationId: updateShippingRate
+      tags: [shippingRates]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateShippingRateBody"
+      responses:
+        "200":
+          description: Shipping rate updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShippingRate"
+    delete:
+      operationId: deleteShippingRate
+      tags: [shippingRates]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
 
   /customers:
     get:
@@ -965,6 +1101,62 @@ components:
         margin: { type: number }
         roas: { type: number }
 
+    CreateProductBody:
+      type: object
+      required: [name, price]
+      properties:
+        name: { type: string }
+        sku: { type: string }
+        category: { type: string }
+        price: { type: number }
+        cogs: { type: number }
+        stock: { type: integer }
+        lowStockThreshold: { type: integer }
+
+    UpdateProductBody:
+      type: object
+      properties:
+        name: { type: string }
+        category: { type: string }
+        price: { type: number }
+        cogs: { type: number }
+        stock: { type: integer }
+        lowStockThreshold: { type: integer }
+        status: { type: string }
+
+    ShippingRate:
+      type: object
+      required: [id, name, region, minOrderValue, maxOrderValue, rate, active]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        region: { type: string }
+        minOrderValue: { type: number }
+        maxOrderValue: { type: ["number", "null"] }
+        rate: { type: number }
+        active: { type: boolean }
+
+    CreateShippingRateBody:
+      type: object
+      required: [name, rate]
+      properties:
+        name: { type: string }
+        region: { type: string }
+        minOrderValue: { type: number }
+        maxOrderValue: { type: ["number", "null"] }
+        rate: { type: number }
+        active: { type: boolean }
+
+    UpdateShippingRateBody:
+      type: object
+      properties:
+        name: { type: string }
+        region: { type: string }
+        minOrderValue: { type: number }
+        maxOrderValue: { type: ["number", "null"] }
+        rate: { type: number }
+        active: { type: boolean }
+
     Customer:
       type: object
       required: [id, name, email, totalSpent, ordersCount]
@@ -1131,6 +1323,7 @@ components:
         dataRefreshMinutes: { type: integer }
         defaultRange: { type: string }
         currency: { type: string }
+        isDemo: { type: boolean }
 
     UpdateSettingsBody:
       type: object

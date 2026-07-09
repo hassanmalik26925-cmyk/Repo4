@@ -65,7 +65,7 @@ function AuthenticatedApp() {
         exit={{ opacity: 0, x: -20 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
-        {screen === "dashboard" && <DashboardPage />}
+        {screen === "dashboard" && <DashboardPage onNavigate={setScreen} />}
         {screen === "orders" && <OrdersPage />}
         {screen === "marketing" && <MarketingPage />}
         {screen === "products" && <ProductsPage />}

@@ -21,6 +21,7 @@ function shape(user: typeof usersTable.$inferSelect) {
     defaultRange: user.defaultRange,
     currency: user.currency,
     isOnboarded: user.isOnboarded === "true",
+    isDemo: user.isDemo === "true",
   };
 }
 

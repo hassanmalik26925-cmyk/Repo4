@@ -22,6 +22,24 @@ import { useCurrency } from "../contexts/CurrencyContext";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedPage, AnimatedCard, AnimatedList, AnimatedListItem, PulseDot } from "../components/AnimatedPage";
+import type { Screen } from "../components/AppShell";
+
+const INSIGHT_TARGET: Record<string, Screen> = {
+  "revenue-surge": "orders",
+  "revenue-drop": "settings",
+  "low-margin": "products",
+  "thin-margin": "products",
+  "roas-negative": "marketing",
+  "roas-low": "marketing",
+  "roas-excellent": "marketing",
+  "roas-declining": "marketing",
+  "worst-campaign": "marketing",
+  "best-campaign": "marketing",
+  "low-stock": "products",
+  "out-of-stock": "products",
+  "aov-down": "products",
+  "no-data": "settings",
+};
 
 const PLATFORM_COLOR: Record<string, string> = {
   shopify: C.green, woocommerce: C.violet, direct: C.blue, manual: C.slate,
@@ -55,12 +73,13 @@ interface InsightItem {
   metric?: string; action?: string;
 }
 
-function InsightCard({ insight }: { insight: InsightItem }) {
+function InsightCard({ insight, onNavigate }: { insight: InsightItem; onNavigate: (screen: Screen) => void }) {
   const [expanded, setExpanded] = useState(false);
   const sev = (insight.severity as keyof typeof SEVERITY_CONFIG) in SEVERITY_CONFIG
     ? (insight.severity as keyof typeof SEVERITY_CONFIG)
     : "info";
   const cfg = SEVERITY_CONFIG[sev];
+  const target = INSIGHT_TARGET[insight.id];
   return (
     <motion.div
       layout
@@ -98,9 +117,16 @@ function InsightCard({ insight }: { insight: InsightItem }) {
             <div className="mt-2 ml-7">
               <p className="text-xs text-foreground/80 leading-relaxed">{insight.description}</p>
               {insight.action && (
-                <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/70 dark:bg-black/20 px-2.5 py-1 text-[11px] font-semibold text-foreground/70 border border-current/10">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (target) onNavigate(target);
+                  }}
+                  disabled={!target}
+                  className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/70 dark:bg-black/20 px-2.5 py-1 text-[11px] font-semibold text-foreground/70 border border-current/10 hover-elevate disabled:opacity-60"
+                >
                   <ChevronRight className="h-3 w-3" /> {insight.action}
-                </div>
+                </button>
               )}
             </div>
           </motion.div>
@@ -110,7 +136,7 @@ function InsightCard({ insight }: { insight: InsightItem }) {
   );
 }
 
-export function DashboardPage() {
+export function DashboardPage({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
   const { range } = useDateRange();
   const { format: fmt } = useCurrency();
   const overview = useGetDashboardOverview({ range });
@@ -272,7 +298,7 @@ export function DashboardPage() {
                 <AnimatedList className="flex flex-col gap-2">
                   {insightList.map((i: InsightItem) => (
                     <AnimatedListItem key={i.id}>
-                      <InsightCard insight={i} />
+                      <InsightCard insight={i} onNavigate={onNavigate} />
                     </AnimatedListItem>
                   ))}
                 </AnimatedList>

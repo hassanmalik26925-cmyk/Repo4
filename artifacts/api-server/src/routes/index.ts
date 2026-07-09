@@ -15,6 +15,7 @@ import notificationsRouter from "./notifications";
 import eventsRouter from "./events";
 import onboardingRouter from "./onboarding";
 import adminRouter from "./admin";
+import shippingRatesRouter from "./shippingRates";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(notificationsRouter);
 router.use(eventsRouter);
 router.use(onboardingRouter);
 router.use(adminRouter);
+router.use(shippingRatesRouter);
 
 export default router;

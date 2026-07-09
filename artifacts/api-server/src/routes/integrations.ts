@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
-import { db, integrationsTable } from "@workspace/db";
+import { db, integrationsTable, usersTable } from "@workspace/db";
 import {
   ListIntegrationsResponse,
   ConnectIntegrationBody,
@@ -119,6 +119,36 @@ router.post("/integrations/:platform/disconnect", async (req, res): Promise<void
   const platform = Array.isArray(req.params.platform)
     ? req.params.platform[0]!
     : req.params.platform;
+
+  // Demo accounts keep their sample data flowing even after "disconnecting" —
+  // only real, non-demo users actually lose live sync when they disconnect.
+  const [account] = await db
+    .select({ isDemo: usersTable.isDemo })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+  if (account?.isDemo === "true") {
+    const [row] = await db
+      .select()
+      .from(integrationsTable)
+      .where(
+        and(
+          eq(integrationsTable.userId, userId),
+          eq(integrationsTable.platform, platform),
+        ),
+      );
+    if (!row) {
+      res.status(404).json({ error: "Integration not found" });
+      return;
+    }
+    res.json(
+      DisconnectIntegrationResponse.parse({
+        ...shape(row),
+        status: "connected",
+      }),
+    );
+    return;
+  }
+
   const [row] = await db
     .update(integrationsTable)
     .set({ status: "disconnected", credentials: null })

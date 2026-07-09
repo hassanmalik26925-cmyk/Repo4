@@ -51,6 +51,7 @@ import {
 import { Skeleton } from "../components/UIPrimitives";
 import { formatRelative } from "../lib/format";
 import { friendlyError } from "../lib/errors";
+import { ShippingRatesSection } from "../components/ShippingRatesSection";
 
 // ── Platform icon / colour maps ───────────────────────────────────────────────
 
@@ -452,6 +453,10 @@ export function SettingsPage() {
           ))
         )}
       </div>
+
+      {/* ── Shipping rates ─────────────────────────────────────────── */}
+      <SectionLabel label="Shipping Rates" />
+      <ShippingRatesSection onToast={toast} />
 
       {/* ── Reporting ──────────────────────────────────────────────── */}
       <SectionLabel label="Reporting" />

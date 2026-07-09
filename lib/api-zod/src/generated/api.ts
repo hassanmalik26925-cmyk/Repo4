@@ -238,6 +238,109 @@ export const ListProductsResponseItem = zod.object({
 });
 export const ListProductsResponse = zod.array(ListProductsResponseItem);
 
+export const CreateProductBody = zod.object({
+  name: zod.string(),
+  sku: zod.string().optional(),
+  category: zod.string().optional(),
+  price: zod.number(),
+  cogs: zod.number().optional(),
+  stock: zod.number().optional(),
+  lowStockThreshold: zod.number().optional(),
+});
+
+export const UpdateProductParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateProductBody = zod.object({
+  name: zod.string().optional(),
+  category: zod.string().optional(),
+  price: zod.number().optional(),
+  cogs: zod.number().optional(),
+  stock: zod.number().optional(),
+  lowStockThreshold: zod.number().optional(),
+  status: zod.string().optional(),
+});
+
+export const UpdateProductResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  category: zod.string(),
+  price: zod.number(),
+  cogs: zod.number(),
+  stock: zod.number(),
+  status: zod.string(),
+  lowStock: zod.boolean(),
+  unitsSold: zod.number(),
+  revenue: zod.number(),
+  profit: zod.number(),
+  margin: zod.number(),
+  roas: zod.number(),
+});
+
+export const DeleteProductParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteProductResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+export const ListShippingRatesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  region: zod.string(),
+  minOrderValue: zod.number(),
+  maxOrderValue: zod.number().nullable(),
+  rate: zod.number(),
+  active: zod.boolean(),
+});
+export const ListShippingRatesResponse = zod.array(
+  ListShippingRatesResponseItem,
+);
+
+export const CreateShippingRateBody = zod.object({
+  name: zod.string(),
+  region: zod.string().optional(),
+  minOrderValue: zod.number().optional(),
+  maxOrderValue: zod.number().nullish(),
+  rate: zod.number(),
+  active: zod.boolean().optional(),
+});
+
+export const UpdateShippingRateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateShippingRateBody = zod.object({
+  name: zod.string().optional(),
+  region: zod.string().optional(),
+  minOrderValue: zod.number().optional(),
+  maxOrderValue: zod.number().nullish(),
+  rate: zod.number().optional(),
+  active: zod.boolean().optional(),
+});
+
+export const UpdateShippingRateResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  region: zod.string(),
+  minOrderValue: zod.number(),
+  maxOrderValue: zod.number().nullable(),
+  rate: zod.number(),
+  active: zod.boolean(),
+});
+
+export const DeleteShippingRateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteShippingRateResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
 export const ListCustomersResponseItem = zod.object({
   id: zod.string(),
   name: zod.string(),
@@ -405,6 +508,7 @@ export const GetSettingsResponse = zod.object({
   dataRefreshMinutes: zod.number(),
   defaultRange: zod.string(),
   currency: zod.string(),
+  isDemo: zod.boolean().optional(),
 });
 
 export const UpdateSettingsBody = zod.object({
@@ -424,6 +528,7 @@ export const UpdateSettingsResponse = zod.object({
   dataRefreshMinutes: zod.number(),
   defaultRange: zod.string(),
   currency: zod.string(),
+  isDemo: zod.boolean().optional(),
 });
 
 /**

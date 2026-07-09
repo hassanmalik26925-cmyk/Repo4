@@ -163,6 +163,57 @@ export interface ProductPerformance {
   roas: number;
 }
 
+export interface CreateProductBody {
+  name: string;
+  sku?: string;
+  category?: string;
+  price: number;
+  cogs?: number;
+  stock?: number;
+  lowStockThreshold?: number;
+}
+
+export interface UpdateProductBody {
+  name?: string;
+  category?: string;
+  price?: number;
+  cogs?: number;
+  stock?: number;
+  lowStockThreshold?: number;
+  status?: string;
+}
+
+export interface ShippingRate {
+  id: string;
+  name: string;
+  region: string;
+  minOrderValue: number;
+  /** @nullable */
+  maxOrderValue: number | null;
+  rate: number;
+  active: boolean;
+}
+
+export interface CreateShippingRateBody {
+  name: string;
+  region?: string;
+  minOrderValue?: number;
+  /** @nullable */
+  maxOrderValue?: number | null;
+  rate: number;
+  active?: boolean;
+}
+
+export interface UpdateShippingRateBody {
+  name?: string;
+  region?: string;
+  minOrderValue?: number;
+  /** @nullable */
+  maxOrderValue?: number | null;
+  rate?: number;
+  active?: boolean;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -275,6 +326,7 @@ export interface Settings {
   dataRefreshMinutes: number;
   defaultRange: string;
   currency: string;
+  isDemo?: boolean;
 }
 
 export interface UpdateSettingsBody {

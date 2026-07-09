@@ -41,7 +41,12 @@ router.post(
     const passwordHash = await hashPassword(password);
     const [user] = await db
       .insert(usersTable)
-      .values({ email: normalized, name, passwordHash })
+      .values({
+        email: normalized,
+        name,
+        passwordHash,
+        isDemo: normalized === "demo@pulse.test" ? "true" : "false",
+      })
       .returning();
     if (!user) {
       res.status(500).json({ error: "Failed to create user" });

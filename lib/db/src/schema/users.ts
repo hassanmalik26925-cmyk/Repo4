@@ -16,6 +16,7 @@ export const usersTable = pgTable("users", {
   defaultRange: text("default_range").notNull().default("30d"),
   currency: text("currency").notNull().default("USD"),
   isOnboarded: text("is_onboarded").notNull().default("false"),
+  isDemo: text("is_demo").notNull().default("false"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

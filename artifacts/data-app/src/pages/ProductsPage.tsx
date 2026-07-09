@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Package } from "lucide-react";
-import { useListProducts } from "@workspace/api-client-react";
+import { ChevronDown, ChevronUp, Package, Plus, Pencil, Trash2, Loader2, Check, X } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useListProducts,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+  getListProductsQueryKey,
+} from "@workspace/api-client-react";
 import { useDateRange } from "../contexts/DateRangeContext";
 import { Skeleton, EmptyState } from "../components/UIPrimitives";
 import { formatNumber } from "../lib/format";
@@ -97,13 +104,135 @@ function CostBreakdown({ product }: { product: any }) {
   );
 }
 
+function AddProductForm({ onDone }: { onDone: () => void }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("");
+  const [price, setPrice] = useState("");
+  const [cogs, setCogs] = useState("");
+
+  const create = useCreateProduct({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+        onDone();
+      },
+    },
+  });
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim() || !price) return;
+    create.mutate({
+      data: {
+        name: name.trim(),
+        category: category.trim() || "General",
+        price: Number(price),
+        cogs: Number(cogs) || 0,
+      },
+    });
+  }
+
+  return (
+    <form onSubmit={submit} className="mb-4 flex flex-col gap-2 rounded-2xl border border-[hsl(var(--card-border))] bg-card p-4">
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex flex-col gap-0.5 text-xs">
+          <span className="text-muted-foreground">Product name</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} required
+            className="rounded-lg border border-[hsl(var(--card-border))] bg-background px-2.5 py-1.5 text-sm" />
+        </label>
+        <label className="flex flex-col gap-0.5 text-xs">
+          <span className="text-muted-foreground">Category</span>
+          <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="General"
+            className="rounded-lg border border-[hsl(var(--card-border))] bg-background px-2.5 py-1.5 text-sm" />
+        </label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex flex-col gap-0.5 text-xs">
+          <span className="text-muted-foreground">Price</span>
+          <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required
+            className="rounded-lg border border-[hsl(var(--card-border))] bg-background px-2.5 py-1.5 text-sm" />
+        </label>
+        <label className="flex flex-col gap-0.5 text-xs">
+          <span className="text-muted-foreground">Cost of goods (COGS)</span>
+          <input type="number" step="0.01" value={cogs} onChange={(e) => setCogs(e.target.value)}
+            className="rounded-lg border border-[hsl(var(--card-border))] bg-background px-2.5 py-1.5 text-sm" />
+        </label>
+      </div>
+      <div className="mt-1 flex gap-2">
+        <button type="submit" disabled={create.isPending}
+          className="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sky-500 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50">
+          {create.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+          Save product
+        </button>
+        <button type="button" onClick={onDone}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-[hsl(var(--card-border))] hover-elevate">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function EditProductForm({ product, onDone }: { product: any; onDone: () => void }) {
+  const queryClient = useQueryClient();
+  const [price, setPrice] = useState(String(product.price ?? ""));
+  const [cogs, setCogs] = useState(String(product.cogs ?? ""));
+
+  const update = useUpdateProduct({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+        onDone();
+      },
+    },
+  });
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    update.mutate({ id: product.id, data: { price: Number(price), cogs: Number(cogs) || 0 } });
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-3 flex items-end gap-2 rounded-xl border border-[hsl(var(--card-border))] bg-[hsl(var(--muted)/0.4)] p-3">
+      <label className="flex flex-1 flex-col gap-0.5 text-xs">
+        <span className="text-muted-foreground">Price</span>
+        <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required
+          className="rounded-lg border border-[hsl(var(--card-border))] bg-background px-2.5 py-1.5 text-sm" />
+      </label>
+      <label className="flex flex-1 flex-col gap-0.5 text-xs">
+        <span className="text-muted-foreground">COGS</span>
+        <input type="number" step="0.01" value={cogs} onChange={(e) => setCogs(e.target.value)}
+          className="rounded-lg border border-[hsl(var(--card-border))] bg-background px-2.5 py-1.5 text-sm" />
+      </label>
+      <button type="submit" disabled={update.isPending}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-500 text-white disabled:opacity-50">
+        {update.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+      </button>
+      <button type="button" onClick={onDone}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[hsl(var(--card-border))] hover-elevate">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </form>
+  );
+}
+
 export function ProductsPage() {
   const { range } = useDateRange();
   const { format: fmt, formatCompact } = useCurrency();
+  const queryClient = useQueryClient();
   const [sort, setSort] = useState<SortKey>("profit");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const list = useListProducts({ range });
   const items = list.data ?? [];
+
+  const deleteProduct = useDeleteProduct({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() }),
+    },
+  });
 
   const totalRevenue = items.reduce((s, p) => s + p.revenue, 0);
   const totalProfit = items.reduce((s, p) => s + p.profit, 0);
@@ -128,9 +257,20 @@ export function ProductsPage() {
   return (
     <AnimatedPage>
       <div className="flex flex-col gap-0">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="py-4">
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between py-4">
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+          <button
+            onClick={() => setShowAddForm((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+              showAddForm ? "bg-muted text-foreground" : "bg-sky-500 text-white hover:bg-sky-600"
+            }`}
+          >
+            {showAddForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+            {showAddForm ? "Cancel" : "Add product"}
+          </button>
         </motion.div>
+
+        {showAddForm && <AddProductForm onDone={() => setShowAddForm(false)} />}
 
         <div className="mb-4 grid grid-cols-3 gap-2">
           <AnimatedCard delay={0.05}>
@@ -200,8 +340,31 @@ export function ProductsPage() {
                       <div className="text-right shrink-0">
                         <div className="text-base font-bold">{formatCompact(p.revenue)}</div>
                         <div className="text-xs font-semibold text-emerald-500">+{formatCompact(p.profit)}</div>
+                        <div className="mt-1 flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setEditingId(editingId === p.id ? null : p.id)}
+                            className="rounded-lg p-1 text-muted-foreground hover-elevate"
+                            aria-label="Edit price"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Delete "${p.name}"? This cannot be undone.`)) {
+                                deleteProduct.mutate({ id: p.id });
+                              }
+                            }}
+                            className="rounded-lg p-1 text-red-400 hover-elevate"
+                            aria-label="Delete product"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
+                    {editingId === p.id && (
+                      <EditProductForm product={p} onDone={() => setEditingId(null)} />
+                    )}
                     <div className="mt-3 grid grid-cols-4 gap-1">
                       <MetricCell label="Margin" value={`${p.margin.toFixed(1)}%`} color="#22C55E" />
                       <MetricCell label="ROAS" value={`${p.roas.toFixed(2)}x`} color="#0EA5E9" />

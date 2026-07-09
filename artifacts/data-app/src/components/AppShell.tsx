@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity as ActivityIcon, LayoutGrid, ShoppingBag, Megaphone,
-  Package, Settings as SettingsIcon, Sun, Moon, Calendar, Shield,
+  Package, Settings as SettingsIcon, Sun, Moon, Calendar, Shield, Check,
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
-import { RANGE_OPTIONS, type RangeKey, useDateRange } from "../contexts/DateRangeContext";
+import { RANGE_OPTIONS, RANGE_LABELS, type RangeKey, useDateRange } from "../contexts/DateRangeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { NotificationBell } from "./NotificationBell";
 
@@ -20,9 +20,61 @@ const navItems: { key: Screen; label: string; icon: ReactNode }[] = [
   { key: "admin", label: "Admin", icon: <Shield className="h-[22px] w-[22px]" /> },
 ];
 
+function DateRangeMenu() {
+  const { range, setRange } = useDateRange();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <motion.button
+        onClick={() => setOpen((v) => !v)}
+        whileTap={{ scale: 0.95 }}
+        aria-label="Change date range"
+        className="flex h-8 items-center gap-1.5 rounded-lg border border-[hsl(var(--card-border))] bg-background/50 px-2.5 text-xs font-semibold text-foreground hover-elevate"
+      >
+        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="hidden sm:inline">{RANGE_LABELS[range]}</span>
+        <span className="sm:hidden">{range}</span>
+      </motion.button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 top-10 z-40 w-40 overflow-hidden rounded-xl border border-[hsl(var(--card-border))] bg-card shadow-xl"
+          >
+            {RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => { setRange(opt.key as RangeKey); setOpen(false); }}
+                className={`flex w-full items-center justify-between px-3 py-2 text-xs font-medium hover-elevate ${
+                  range === opt.key ? "text-sky-500" : "text-foreground"
+                }`}
+              >
+                {RANGE_LABELS[opt.key]}
+                {range === opt.key && <Check className="h-3.5 w-3.5" />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export function TopBar() {
   const { theme, toggle } = useTheme();
-  const { range, setRange } = useDateRange();
   return (
     <motion.div
       initial={{ y: -20, opacity: 0 }}
@@ -54,21 +106,7 @@ export function TopBar() {
         </div>
         <div className="flex items-center gap-2">
           <NotificationBell />
-          <div className="relative flex items-center gap-0.5 rounded-xl border border-[hsl(var(--card-border))] bg-background/50 px-1 py-1">
-            <Calendar className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          {RANGE_OPTIONS.map((opt) => (
-            <motion.button
-              key={opt.key}
-              onClick={() => setRange(opt.key as RangeKey)}
-              whileTap={{ scale: 0.95 }}
-              className={`rounded-lg px-2 py-1 text-xs font-semibold transition-colors ${
-                range === opt.key ? "bg-sky-500 text-white" : "text-muted-foreground hover-elevate"
-              }`}
-            >
-              {opt.label}
-            </motion.button>
-          ))}
-          </div>
+          <DateRangeMenu />
         </div>
       </div>
     </motion.div>
