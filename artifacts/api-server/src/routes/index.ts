@@ -34,7 +34,7 @@ router.use(insightsRouter);
 router.use(notificationsRouter);
 router.use(eventsRouter);
 router.use(onboardingRouter);
-router.use(adminRouter);
 router.use(shippingRatesRouter);
+router.use(adminRouter);
 
 export default router;

@@ -10,7 +10,7 @@ import {
 import { hashPassword, signToken, verifyPassword } from "../lib/auth";
 import { requireAuth } from "../middlewares/requireAuth";
 import { rateLimit } from "../middlewares/rateLimit";
-import { seedDemoData } from "../lib/seed";
+import { seedDemoData, refreshDemoDataIfStale } from "../lib/seed";
 import { ActivityService } from "../services/ActivityService";
 
 const router: IRouter = Router();
@@ -70,6 +70,7 @@ router.post(
           email: user.email,
           name: user.name,
           role: user.role,
+          isDemo: user.isDemo === "true",
         },
       }),
     );
@@ -99,6 +100,9 @@ router.post(
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
+    if (user.isDemo === "true") {
+      await refreshDemoDataIfStale(user.id);
+    }
     const { token, expiresAt } = signToken({
       sub: user.id,
       email: user.email,
@@ -119,6 +123,7 @@ router.post(
           email: user.email,
           name: user.name,
           role: user.role,
+          isDemo: user.isDemo === "true",
         },
       }),
     );
@@ -130,12 +135,17 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
     res.status(401).json({ error: "Unauthenticated" });
     return;
   }
+  const [row] = await db
+    .select({ isDemo: usersTable.isDemo })
+    .from(usersTable)
+    .where(eq(usersTable.id, req.user.sub));
   res.json(
     MeResponse.parse({
       id: req.user.sub,
       email: req.user.email,
       name: req.user.name,
       role: req.user.role,
+      isDemo: row?.isDemo === "true",
     }),
   );
 });

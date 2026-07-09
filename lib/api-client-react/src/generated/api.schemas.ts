@@ -25,6 +25,7 @@ export interface AuthUser {
   email: string;
   name: string;
   role: string;
+  isDemo?: boolean;
 }
 
 export interface AuthResponse {

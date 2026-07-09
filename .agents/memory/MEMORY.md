@@ -1,4 +1,4 @@
 - [Orval barrel fix](orval-barrel-fix.md) — orval regenerates index.ts with duplicate exports; codegen script must overwrite it post-run.
 - [Integration registry](integration-registry.md) — 15 platforms in integrations/index.ts; adding a new one requires adapter file + REGISTRY + PLATFORM_LABELS entries.
 - [Insights engine](insights-engine.md) — rule-based /insights route; reads DB, no LLM; produces up to 8 prioritized insights sorted critical→warning→positive→info.
-- [Demo vs real users](demo-vs-real-users.md) — usersTable.isDemo gates integration disconnect no-op for demo account; branch new state-changing endpoints the same way.
+- [Demo vs real users](demo-vs-real-users.md) — disconnect is a real DB toggle for all users; demo visibility is a frontend gate bypass + periodic reseed to avoid stale dates.

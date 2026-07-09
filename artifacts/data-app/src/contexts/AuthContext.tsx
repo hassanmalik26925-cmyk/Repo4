@@ -15,6 +15,7 @@ interface AuthUser {
   email: string;
   name: string;
   role: string;
+  isDemo?: boolean;
 }
 
 interface AuthValue {

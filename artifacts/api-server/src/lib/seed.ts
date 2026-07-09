@@ -9,7 +9,7 @@ import {
   integrationsTable,
   activitiesTable,
 } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { ActivityService } from "../services/ActivityService";
 
 const PRODUCT_CATALOG = [
@@ -126,6 +126,35 @@ export async function seedDemoData(userId: string): Promise<void> {
     if (row) customerIds.push(row.id);
   }
 
+  await seedTimeSeries(userId, productIds, customerIds);
+
+  // Initial activities
+  await ActivityService.log({
+    userId,
+    type: "account.created",
+    title: "Account ready",
+    description: "Pulse Commerce dashboard initialized with sample data",
+  });
+  await ActivityService.log({
+    userId,
+    type: "sync.completed",
+    title: "Shopify synced",
+    description: "Initial seed of products, orders, and customers",
+    entityType: "integration",
+  });
+}
+
+// Orders, order items, and ad metrics all carry timestamps relative to "now"
+// at seed time. This is pulled out on its own so demo accounts can have
+// their time series regenerated fresh (see refreshDemoDataIfStale) without
+// re-touching products/customers/campaigns/integrations.
+async function seedTimeSeries(
+  userId: string,
+  productIds: Array<{ id: string; price: number; cogs: number }>,
+  customerIds: string[],
+): Promise<void> {
+  const r = rand(userId.split("").reduce((a, c) => a + c.charCodeAt(0), 0) + Date.now());
+
   // Orders — last 90 days, ~3-5 per day on average
   const now = new Date();
   let orderCounter = 10000;
@@ -230,22 +259,47 @@ export async function seedDemoData(userId: string): Promise<void> {
           spend: spend.toFixed(2),
           revenue: revenue.toFixed(2),
         })
-        .onConflictDoNothing();
+        .onConflictDoUpdate({
+          target: [adMetricsTable.campaignId, adMetricsTable.date],
+          set: { impressions, clicks, conversions, spend: spend.toFixed(2), revenue: revenue.toFixed(2) },
+        });
     }
   }
+}
 
-  // Initial activities
-  await ActivityService.log({
+// Demo accounts are shared/reused across time, so the sample data seeded at
+// account-creation time can silently go stale (orders/ad metrics stop
+// covering "today"), which makes recent date ranges (7d/14d/30d) look empty
+// even though the account is fully wired up. Call this on every demo login
+// so the time series always covers up through today.
+export async function refreshDemoDataIfStale(userId: string): Promise<void> {
+  const [latest] = await db
+    .select({ orderedAt: ordersTable.orderedAt })
+    .from(ordersTable)
+    .where(eq(ordersTable.userId, userId))
+    .orderBy(sql`${ordersTable.orderedAt} DESC`)
+    .limit(1);
+
+  const staleCutoff = new Date();
+  staleCutoff.setUTCDate(staleCutoff.getUTCDate() - 1);
+  if (latest && latest.orderedAt > staleCutoff) return;
+
+  const [products, customers] = await Promise.all([
+    db
+      .select({ id: productsTable.id, price: productsTable.price, cogs: productsTable.cogs })
+      .from(productsTable)
+      .where(eq(productsTable.userId, userId)),
+    db.select({ id: customersTable.id }).from(customersTable).where(eq(customersTable.userId, userId)),
+  ]);
+  if (products.length === 0) return;
+
+  // Orders cascade-delete their order items; ad metrics are cleared per-user.
+  await db.delete(ordersTable).where(eq(ordersTable.userId, userId));
+  await db.delete(adMetricsTable).where(eq(adMetricsTable.userId, userId));
+
+  await seedTimeSeries(
     userId,
-    type: "account.created",
-    title: "Account ready",
-    description: "Pulse Commerce dashboard initialized with sample data",
-  });
-  await ActivityService.log({
-    userId,
-    type: "sync.completed",
-    title: "Shopify synced",
-    description: "Initial seed of products, orders, and customers",
-    entityType: "integration",
-  });
+    products.map((p) => ({ id: p.id, price: Number(p.price), cogs: Number(p.cogs) })),
+    customers.map((c) => c.id),
+  );
 }

@@ -37,6 +37,10 @@ import {
   useDisconnectIntegration,
   useSyncIntegration,
   useGetDashboardOverview,
+  useListProducts,
+  useListOrders,
+  useGetMarketingSummary,
+  useListCampaigns,
   getListIntegrationsQueryKey,
   getGetIntegrationsHealthQueryKey,
 } from "@workspace/api-client-react";
@@ -52,6 +56,7 @@ import { Skeleton } from "../components/UIPrimitives";
 import { formatRelative } from "../lib/format";
 import { friendlyError } from "../lib/errors";
 import { ShippingRatesSection } from "../components/ShippingRatesSection";
+import { ProductCostPricingSection } from "../components/ProductCostPricingSection";
 
 // ── Platform icon / colour maps ───────────────────────────────────────────────
 
@@ -246,7 +251,24 @@ export function SettingsPage() {
   const update = useUpdateSettings();
   const integrations = useListIntegrations();
   const overview = useGetDashboardOverview({ range });
+  const productsForReport = useListProducts(
+    { range },
+    { query: { enabled: false, queryKey: ["report", "products", range] } },
+  );
+  const ordersForReport = useListOrders(
+    { range },
+    { query: { enabled: false, queryKey: ["report", "orders", range] } },
+  );
+  const marketingForReport = useGetMarketingSummary(
+    { range },
+    { query: { enabled: false, queryKey: ["report", "marketing", range] } },
+  );
+  const campaignsForReport = useListCampaigns(
+    { range },
+    { query: { enabled: false, queryKey: ["report", "campaigns", range] } },
+  );
   const { msg: toastMsg, toast } = useToast();
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   const [name, setName] = useState("");
   const [notif, setNotif] = useState(true);
@@ -306,56 +328,166 @@ export function SettingsPage() {
     save({ currency: code }, `Currency: ${code}`);
   }
 
-  function handleExportPDF() {
-    const d = overview.data;
-    const rangeLabel = RANGE_LABELS[range];
+  async function handleExportPDF() {
+    setExportingPDF(true);
+    try {
+      const [productsRes, ordersRes, marketingRes, campaignsRes] = await Promise.all([
+        productsForReport.refetch(),
+        ordersForReport.refetch(),
+        marketingForReport.refetch(),
+        campaignsForReport.refetch(),
+      ]);
+      const d = overview.data;
+      const products = productsRes.data ?? [];
+      const allOrders = ordersRes.data?.orders ?? [];
+      const orders = allOrders.slice(0, 50);
+      const marketing = marketingRes.data;
+      const campaigns = campaignsRes.data ?? [];
+      const rangeLabel = RANGE_LABELS[range];
 
-    // Each field is a Metric { value: number, deltaPct: number }
-    const fmtMoney = (m: { value: number } | undefined) =>
-      m == null ? "—" : `$${Number(m.value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const fmtNum = (m: { value: number } | undefined) =>
-      m == null ? "—" : Number(m.value).toLocaleString("en-US");
-    const fmtX = (m: { value: number } | undefined) =>
-      m == null ? "—" : `${Number(m.value).toFixed(2)}x`;
-    const profitColor = (d?.profit?.value ?? 0) >= 0 ? "#16a34a" : "#dc2626";
+      // Each field is a Metric { value: number, deltaPct: number }
+      const fmtMoney = (v: number | undefined | null) =>
+        v == null ? "—" : `$${Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const fmtMetricMoney = (m: { value: number } | undefined) => fmtMoney(m?.value);
+      const fmtNum = (v: number | undefined | null) =>
+        v == null ? "—" : Number(v).toLocaleString("en-US");
+      const fmtMetricNum = (m: { value: number } | undefined) => fmtNum(m?.value);
+      const fmtX = (v: number | undefined | null) =>
+        v == null ? "—" : `${Number(v).toFixed(2)}x`;
+      const fmtMetricX = (m: { value: number } | undefined) => fmtX(m?.value);
+      const fmtPct = (v: number | undefined | null) =>
+        v == null ? "—" : `${Number(v).toFixed(1)}%`;
+      const fmtDate = (v: string | undefined | null) =>
+        v ? new Date(v).toLocaleDateString() : "—";
+      const esc = (s: string) =>
+        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const profitColor = (d?.profit?.value ?? 0) >= 0 ? "#16a34a" : "#dc2626";
 
-    const html = `<!DOCTYPE html>
+      const productRows = products
+        .slice(0, 100)
+        .map(
+          (p) => `<tr>
+  <td>${esc(p.name)}</td>
+  <td>${esc(p.category)}</td>
+  <td class="num">${fmtNum(p.stock)}</td>
+  <td class="num">${fmtMoney(p.price)}</td>
+  <td class="num">${fmtMoney(p.cogs)}</td>
+  <td class="num">${fmtMoney(p.revenue)}</td>
+  <td class="num" style="color:${p.profit >= 0 ? "#16a34a" : "#dc2626"}">${fmtMoney(p.profit)}</td>
+  <td class="num">${fmtPct(p.margin)}</td>
+</tr>`,
+        )
+        .join("");
+
+      const orderRows = orders
+        .map(
+          (o: (typeof allOrders)[number]) => `<tr>
+  <td>${esc(o.orderNumber)}</td>
+  <td>${esc(o.platform)}</td>
+  <td><span class="pill">${esc(o.status)}</span></td>
+  <td class="num">${fmtMoney(o.totalAmount)}</td>
+  <td>${fmtDate(o.orderedAt)}</td>
+</tr>`,
+        )
+        .join("");
+
+      const campaignRows = campaigns
+        .slice(0, 50)
+        .map(
+          (c) => `<tr>
+  <td>${esc(c.name)}</td>
+  <td>${esc(c.channel)}</td>
+  <td class="num">${fmtMoney(c.spend)}</td>
+  <td class="num">${fmtMoney(c.revenue)}</td>
+  <td class="num">${fmtX(c.roas)}</td>
+  <td class="num">${fmtMoney(c.cpa)}</td>
+  <td class="num">${fmtPct(c.ctr)}</td>
+</tr>`,
+        )
+        .join("");
+
+      const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Pulse Commerce Report</title>
 <style>
   body { font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 32px; color: #111; background: #fff; }
   h1 { font-size: 26px; font-weight: 800; margin: 0 0 4px; }
+  h2 { font-size: 15px; font-weight: 800; margin: 0 0 12px; }
   .sub { color: #666; font-size: 13px; margin-bottom: 28px; }
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
   .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px 20px; }
   .card .label { font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #888; margin-bottom: 6px; }
   .card .value { font-size: 22px; font-weight: 800; }
-  .section { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #888; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+  .section { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #888; margin: 32px 0 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 8px; page-break-inside: auto; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+  th { text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: #888; padding: 6px 8px; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 6px 8px; border-bottom: 1px solid #f1f1f1; }
+  td.num, th.num { text-align: right; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #f1f5f9; font-size: 10px; text-transform: capitalize; }
+  .empty { color: #999; font-size: 12px; padding: 12px 0; }
   .footer { margin-top: 40px; font-size: 11px; color: #aaa; text-align: center; }
-  @media print { body { padding: 20px; } }
+  @media print { body { padding: 20px; } .section { break-before: auto; } }
 </style></head><body>
-<h1>Commerce Pulse — Dashboard Report</h1>
+<h1>Commerce Pulse — Full Dashboard Report</h1>
 <p class="sub">Period: ${rangeLabel} &nbsp;·&nbsp; Generated: ${new Date().toLocaleString()} &nbsp;·&nbsp; ${user?.email ?? ""}</p>
 
 <p class="section">Key Metrics</p>
 <div class="grid">
-  <div class="card"><div class="label">Revenue</div><div class="value" style="color:#2563eb">${fmtMoney(d?.revenue)}</div></div>
-  <div class="card"><div class="label">Ad Spend</div><div class="value">${fmtMoney(d?.adSpend)}</div></div>
-  <div class="card"><div class="label">Profit</div><div class="value" style="color:${profitColor}">${fmtMoney(d?.profit)}</div></div>
-  <div class="card"><div class="label">Orders</div><div class="value">${fmtNum(d?.ordersCount)}</div></div>
-  <div class="card"><div class="label">ROAS</div><div class="value" style="color:#16a34a">${fmtX(d?.roas)}</div></div>
-  <div class="card"><div class="label">CPA</div><div class="value">${fmtMoney(d?.cpa)}</div></div>
+  <div class="card"><div class="label">Revenue</div><div class="value" style="color:#2563eb">${fmtMetricMoney(d?.revenue)}</div></div>
+  <div class="card"><div class="label">Ad Spend</div><div class="value">${fmtMetricMoney(d?.adSpend)}</div></div>
+  <div class="card"><div class="label">Profit</div><div class="value" style="color:${profitColor}">${fmtMetricMoney(d?.profit)}</div></div>
+  <div class="card"><div class="label">Orders</div><div class="value">${fmtMetricNum(d?.ordersCount)}</div></div>
+  <div class="card"><div class="label">ROAS</div><div class="value" style="color:#16a34a">${fmtMetricX(d?.roas)}</div></div>
+  <div class="card"><div class="label">CPA</div><div class="value">${fmtMetricMoney(d?.cpa)}</div></div>
 </div>
+
+<p class="section">Marketing Summary</p>
+<div class="grid">
+  <div class="card"><div class="label">Ad Spend</div><div class="value">${fmtMoney(marketing?.adSpend)}</div></div>
+  <div class="card"><div class="label">Ad Revenue</div><div class="value">${fmtMoney(marketing?.adRevenue)}</div></div>
+  <div class="card"><div class="label">ROAS</div><div class="value">${fmtX(marketing?.roas)}</div></div>
+  <div class="card"><div class="label">CPA</div><div class="value">${fmtMoney(marketing?.cpa)}</div></div>
+  <div class="card"><div class="label">CTR</div><div class="value">${fmtPct(marketing?.ctr)}</div></div>
+  <div class="card"><div class="label">Conversions</div><div class="value">${fmtNum(marketing?.conversions)}</div></div>
+</div>
+
+<p class="section">Campaigns (${campaigns.length})</p>
+${
+  campaigns.length
+    ? `<table><thead><tr><th>Name</th><th>Channel</th><th class="num">Spend</th><th class="num">Revenue</th><th class="num">ROAS</th><th class="num">CPA</th><th class="num">CTR</th></tr></thead><tbody>${campaignRows}</tbody></table>`
+    : `<p class="empty">No campaigns in this period.</p>`
+}
+
+<p class="section">Products (${products.length})</p>
+${
+  products.length
+    ? `<table><thead><tr><th>Name</th><th>Category</th><th class="num">Stock</th><th class="num">Price</th><th class="num">COGS</th><th class="num">Revenue</th><th class="num">Profit</th><th class="num">Margin</th></tr></thead><tbody>${productRows}</tbody></table>`
+    : `<p class="empty">No products found.</p>`
+}
+
+<p class="section">Recent Orders (${orders.length}${allOrders.length > 50 ? " of " + allOrders.length : ""})</p>
+${
+  orders.length
+    ? `<table><thead><tr><th>Order #</th><th>Platform</th><th>Status</th><th class="num">Total</th><th>Date</th></tr></thead><tbody>${orderRows}</tbody></table>`
+    : `<p class="empty">No orders in this period.</p>`
+}
 
 <p class="footer">INSIDE NEXUS &nbsp;·&nbsp; Commerce Pulse v1.0.0</p>
 <script>window.onload = () => { window.print(); }<\/script>
 </body></html>`;
 
-    const win = window.open("", "_blank");
-    if (win) {
-      win.document.write(html);
-      win.document.close();
-    } else {
-      toast("Allow pop-ups to export PDF");
+      const win = window.open("", "_blank");
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+      } else {
+        toast("Allow pop-ups to export PDF");
+      }
+    } catch {
+      toast("Couldn't build the report — try again");
+    } finally {
+      setExportingPDF(false);
     }
   }
 
@@ -458,16 +590,22 @@ export function SettingsPage() {
       <SectionLabel label="Shipping Rates" />
       <ShippingRatesSection onToast={toast} />
 
+      {/* ── Product cost & pricing ────────────────────────────────── */}
+      <SectionLabel label="Product Cost & Pricing" />
+      <ProductCostPricingSection onToast={toast} />
+
       {/* ── Reporting ──────────────────────────────────────────────── */}
       <SectionLabel label="Reporting" />
       <div className="mb-5 overflow-hidden rounded-2xl border border-[hsl(var(--card-border))] bg-card">
         <ActionRow
-          icon={<Printer className="h-4 w-4" />}
+          icon={exportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
           bg="#DBEAFE"
           fg="#2563EB"
           label="Export PDF Report"
-          value="Print / Save"
-          onClick={handleExportPDF}
+          value={exportingPDF ? "Building…" : "Full dashboard"}
+          onClick={() => {
+            if (!exportingPDF) void handleExportPDF();
+          }}
         />
         <div className="mx-4 border-t border-[hsl(var(--card-border))]" />
         <ActionRow

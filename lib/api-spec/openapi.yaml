@@ -884,6 +884,7 @@ components:
         email: { type: string }
         name: { type: string }
         role: { type: string }
+        isDemo: { type: boolean }
 
     AuthResponse:
       type: object

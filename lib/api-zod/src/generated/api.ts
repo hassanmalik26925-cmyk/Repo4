@@ -39,6 +39,7 @@ export const LoginResponse = zod.object({
     email: zod.string(),
     name: zod.string(),
     role: zod.string(),
+    isDemo: zod.boolean().optional(),
   }),
 });
 
@@ -50,6 +51,7 @@ export const MeResponse = zod.object({
   email: zod.string(),
   name: zod.string(),
   role: zod.string(),
+  isDemo: zod.boolean().optional(),
 });
 
 /**

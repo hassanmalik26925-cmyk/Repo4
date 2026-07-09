@@ -5,7 +5,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
-router.use(requireAuth, requireAdmin);
+router.use("/admin", requireAuth, requireAdmin);
 
 router.get("/admin/users", async (req, res): Promise<void> => {
   const users = await db

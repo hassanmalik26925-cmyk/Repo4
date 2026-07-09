@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
-import { db, integrationsTable, usersTable } from "@workspace/db";
+import { db, integrationsTable } from "@workspace/db";
 import {
   ListIntegrationsResponse,
   ConnectIntegrationBody,
@@ -120,35 +120,12 @@ router.post("/integrations/:platform/disconnect", async (req, res): Promise<void
     ? req.params.platform[0]!
     : req.params.platform;
 
-  // Demo accounts keep their sample data flowing even after "disconnecting" —
-  // only real, non-demo users actually lose live sync when they disconnect.
-  const [account] = await db
-    .select({ isDemo: usersTable.isDemo })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId));
-  if (account?.isDemo === "true") {
-    const [row] = await db
-      .select()
-      .from(integrationsTable)
-      .where(
-        and(
-          eq(integrationsTable.userId, userId),
-          eq(integrationsTable.platform, platform),
-        ),
-      );
-    if (!row) {
-      res.status(404).json({ error: "Integration not found" });
-      return;
-    }
-    res.json(
-      DisconnectIntegrationResponse.parse({
-        ...shape(row),
-        status: "connected",
-      }),
-    );
-    return;
-  }
-
+  // Demo accounts can toggle integrations connected/disconnected just like a
+  // real account — the Settings UI reflects the real status either way. What
+  // makes demo different is that all dashboards/pages keep showing sample
+  // data regardless of connection status (see hasDemoData gating on the FE
+  // and the fact that ProductService/RevenueService never filter by
+  // integration status), so disconnecting never "breaks" the demo.
   const [row] = await db
     .update(integrationsTable)
     .set({ status: "disconnected", credentials: null })

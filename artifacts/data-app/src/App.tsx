@@ -50,9 +50,13 @@ function NoIntegrationScreen({ onGoToSettings }: { onGoToSettings: () => void })
 function AuthenticatedApp() {
   const [screen, setScreen] = useState<Screen>("dashboard");
   const integrations = useListIntegrations();
+  const { user } = useAuth();
   useSSE();
 
+  // Demo accounts always show full sample data, regardless of whether any
+  // integration is currently marked connected/disconnected in Settings.
   const hasConnected =
+    !!user?.isDemo ||
     integrations.isLoading ||
     (integrations.data ?? []).some((i) => i.status === "connected");
 
