@@ -1,15 +1,18 @@
-import { and, between, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, between, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import {
   db,
   ordersTable,
   orderItemsTable,
   customersTable,
   productsTable,
+  usersTable,
   type Order,
   type OrderItem,
 } from "@workspace/db";
 import type { DateWindow } from "../lib/dateRange";
 import { REVENUE_STATUSES } from "./RevenueService";
+import { sendMail } from "../lib/email";
+import { logger } from "../lib/logger";
 
 export interface OrderListFilters {
   status?: string;
@@ -242,4 +245,136 @@ export class OrderService {
       return updated;
     });
   }
+
+  /**
+   * Sends a real receipt email for any order that has reached a
+   * revenue-recognized status (paid/fulfilled) and hasn't been emailed yet.
+   * The "from"/store identity comes from the account's own data (name +
+   * email) rather than a separately configured address, and the recipient
+   * comes from the order's linked customer record — no mock addresses.
+   * Best-effort: never throws, so it never blocks the order flow.
+   */
+  static async sendPendingReceipts(userId: string): Promise<number> {
+    const [user] = await db
+      .select({ name: usersTable.name, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+    if (!user) return 0;
+
+    const pending = await db
+      .select({
+        id: ordersTable.id,
+        orderNumber: ordersTable.orderNumber,
+        status: ordersTable.status,
+        subtotal: ordersTable.subtotal,
+        shipping: ordersTable.shipping,
+        tax: ordersTable.tax,
+        totalAmount: ordersTable.totalAmount,
+        orderedAt: ordersTable.orderedAt,
+        customerName: customersTable.name,
+        customerEmail: customersTable.email,
+      })
+      .from(ordersTable)
+      .innerJoin(customersTable, eq(customersTable.id, ordersTable.customerId))
+      .where(
+        and(
+          eq(ordersTable.userId, userId),
+          inArray(ordersTable.status, [...REVENUE_STATUSES]),
+          isNull(ordersTable.receiptSentAt),
+        ),
+      )
+      .limit(50);
+
+    let sentCount = 0;
+    for (const o of pending) {
+      const items = await db
+        .select()
+        .from(orderItemsTable)
+        .where(eq(orderItemsTable.orderId, o.id));
+
+      const html = buildReceiptHtml({
+        storeName: user.name,
+        orderNumber: o.orderNumber,
+        orderedAt: o.orderedAt,
+        customerName: o.customerName,
+        items: items.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: Number(i.unitPrice),
+        })),
+        subtotal: Number(o.subtotal),
+        shipping: Number(o.shipping),
+        tax: Number(o.tax),
+        total: Number(o.totalAmount),
+      });
+
+      const ok = await sendMail({
+        to: o.customerEmail,
+        fromName: user.name,
+        fromEmail: user.email,
+        subject: `Your receipt from ${user.name} — Order ${o.orderNumber}`,
+        html,
+      });
+
+      if (ok) {
+        await db
+          .update(ordersTable)
+          .set({ receiptSentAt: new Date() })
+          .where(eq(ordersTable.id, o.id));
+        sentCount += 1;
+      } else {
+        logger.warn({ orderId: o.id }, "Receipt email not sent (SMTP not configured or failed)");
+      }
+    }
+    return sentCount;
+  }
+}
+
+function buildReceiptHtml(input: {
+  storeName: string;
+  orderNumber: string;
+  orderedAt: Date;
+  customerName: string;
+  items: Array<{ name: string; quantity: number; unitPrice: number }>;
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  total: number;
+}): string {
+  const money = (n: number) => `$${n.toFixed(2)}`;
+  const rows = input.items
+    .map(
+      (i) => `
+      <tr>
+        <td style="padding:8px 0;color:#111">${i.name}</td>
+        <td style="padding:8px 0;text-align:center;color:#555">${i.quantity}</td>
+        <td style="padding:8px 0;text-align:right;color:#111">${money(i.unitPrice * i.quantity)}</td>
+      </tr>`,
+    )
+    .join("");
+
+  return `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;color:#111">
+    <h2 style="margin:0 0 4px">${input.storeName}</h2>
+    <p style="color:#555;margin:0 0 24px">Thank you for your order!</p>
+    <p style="margin:0 0 4px"><strong>Order ${input.orderNumber}</strong></p>
+    <p style="color:#555;margin:0 0 24px">${input.orderedAt.toLocaleDateString()} · ${input.customerName}</p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+      <thead>
+        <tr style="border-bottom:1px solid #e5e5e5">
+          <th style="text-align:left;padding-bottom:8px;color:#888;font-size:12px">ITEM</th>
+          <th style="text-align:center;padding-bottom:8px;color:#888;font-size:12px">QTY</th>
+          <th style="text-align:right;padding-bottom:8px;color:#888;font-size:12px">PRICE</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <table style="width:100%;border-collapse:collapse">
+      <tr><td style="color:#555;padding:2px 0">Subtotal</td><td style="text-align:right;padding:2px 0">${money(input.subtotal)}</td></tr>
+      <tr><td style="color:#555;padding:2px 0">Shipping</td><td style="text-align:right;padding:2px 0">${money(input.shipping)}</td></tr>
+      <tr><td style="color:#555;padding:2px 0">Tax</td><td style="text-align:right;padding:2px 0">${money(input.tax)}</td></tr>
+      <tr style="border-top:1px solid #e5e5e5"><td style="padding-top:8px;font-weight:600">Total</td><td style="text-align:right;padding-top:8px;font-weight:600">${money(input.total)}</td></tr>
+    </table>
+    <p style="color:#999;font-size:12px;margin-top:32px">Sent by ${input.storeName} via Pulse Commerce.</p>
+  </div>`;
 }

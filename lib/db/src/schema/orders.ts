@@ -37,6 +37,7 @@ export const ordersTable = pgTable(
     totalAmount: numeric("total_amount", { precision: 14, scale: 2 }).notNull(),
     status: text("status").notNull(),
     orderedAt: timestamp("ordered_at", { withTimezone: true }).notNull(),
+    receiptSentAt: timestamp("receipt_sent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

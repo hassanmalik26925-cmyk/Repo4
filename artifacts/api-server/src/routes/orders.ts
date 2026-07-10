@@ -76,6 +76,9 @@ router.post("/orders/:id/fulfill", async (req, res): Promise<void> => {
     entityType: "order",
     entityId: updated.id,
   });
+  OrderService.sendPendingReceipts(userId).catch((err) =>
+    req.log.error({ err }, "Receipt send failed after fulfill"),
+  );
   res.json(
     FulfillOrderResponse.parse({
       id: updated.id,

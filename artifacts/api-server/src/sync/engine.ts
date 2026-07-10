@@ -11,6 +11,7 @@ import {
 import { decryptJson } from "../lib/crypto";
 import { getAdapter } from "../integrations";
 import { ActivityService } from "../services/ActivityService";
+import { OrderService } from "../services/OrderService";
 import { logger } from "../lib/logger";
 
 const RETRY_LIMIT = 3;
@@ -144,6 +145,9 @@ export async function runSyncFor(
         entityType: "integration",
         entityId: integration.id,
       });
+      OrderService.sendPendingReceipts(userId).catch((err) =>
+        logger.error({ err, userId }, "Receipt send failed after sync"),
+      );
       logger.info({ userId, platform, result: r }, "Sync ok");
       return { ok: true };
     } catch (err) {
