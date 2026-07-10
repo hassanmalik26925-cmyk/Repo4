@@ -6,7 +6,7 @@ import {
   orderItemsTable,
   type Product,
 } from "@workspace/db";
-import type { DateWindow } from "../lib/dateRange";
+import { dateWindow, type DateWindow } from "../lib/dateRange";
 import { REVENUE_STATUSES } from "./RevenueService";
 
 export interface ProductPerformance {
@@ -90,6 +90,60 @@ export class ProductService {
         };
       })
       .sort((a, b) => b.profit - a.profit);
+  }
+
+  static async getOne(
+    userId: string,
+    productId: string,
+  ): Promise<ProductPerformance | null> {
+    const [product] = await db
+      .select()
+      .from(productsTable)
+      .where(and(eq(productsTable.id, productId), eq(productsTable.userId, userId)));
+    if (!product) return null;
+
+    // 90d matches the widest dashboard range, keeping single-product stats
+    // consistent with the list/dashboard views instead of a separate formula.
+    const win = dateWindow("90d");
+    const [s] = await db
+      .select({
+        units: sql<string>`COALESCE(SUM(${orderItemsTable.quantity}), 0)`,
+        revenue: sql<string>`COALESCE(SUM(${orderItemsTable.unitPrice} * ${orderItemsTable.quantity}), 0)`,
+        cost: sql<string>`COALESCE(SUM(${orderItemsTable.unitCost} * ${orderItemsTable.quantity}), 0)`,
+      })
+      .from(orderItemsTable)
+      .innerJoin(ordersTable, eq(ordersTable.id, orderItemsTable.orderId))
+      .where(
+        and(
+          eq(ordersTable.userId, userId),
+          eq(orderItemsTable.productId, productId),
+          inArray(ordersTable.status, [...REVENUE_STATUSES]),
+          between(ordersTable.orderedAt, win.from, win.to),
+        ),
+      );
+
+    const units = Number(s?.units ?? 0);
+    const revenue = Number(s?.revenue ?? 0);
+    const cost = Number(s?.cost ?? 0);
+    const profit = revenue - cost;
+    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+    const roas = cost > 0 ? revenue / cost : 0;
+
+    return {
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: Number(product.price),
+      cogs: Number(product.cogs),
+      stock: product.stock,
+      status: product.status,
+      lowStock: product.stock <= product.lowStockThreshold,
+      unitsSold: units,
+      revenue,
+      profit,
+      margin,
+      roas,
+    };
   }
 
   static async lowStock(userId: string): Promise<Product[]> {

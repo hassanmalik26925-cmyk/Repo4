@@ -2,3 +2,5 @@
 - [Integration registry](integration-registry.md) — 15 platforms in integrations/index.ts; adding a new one requires adapter file + REGISTRY + PLATFORM_LABELS entries.
 - [Insights engine](insights-engine.md) — rule-based /insights route; reads DB, no LLM; produces up to 8 prioritized insights sorted critical→warning→positive→info.
 - [Demo vs real users](demo-vs-real-users.md) — disconnect is a real DB toggle for all users; demo visibility is a frontend gate bypass + periodic reseed to avoid stale dates.
+- [Router mount order](router-mount-order.md) — unscoped router.use(requireAdmin) in one sub-router can block unrelated routes registered after it; always scope with a path prefix.
+- [Metrics formulas](metrics-formulas.md) — revenue/profit/ROAS differ intentionally by section (order revenue vs ad-attributed vs per-product); historical order_items freeze price/cost at sale time.

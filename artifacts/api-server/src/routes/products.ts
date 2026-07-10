@@ -109,18 +109,8 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
     entityType: "product",
     entityId: row.id,
   });
-  res.json(
-    UpdateProductResponse.parse({
-      id: row.id,
-      name: row.name,
-      category: row.category,
-      price: Number(row.price),
-      cogs: Number(row.cogs),
-      stock: row.stock,
-      status: row.status,
-      lowStock: row.stock <= row.lowStockThreshold,
-    }),
-  );
+  const performance = await ProductService.getOne(userId, row.id);
+  res.json(UpdateProductResponse.parse(performance));
 });
 
 router.delete("/products/:id", async (req, res): Promise<void> => {
