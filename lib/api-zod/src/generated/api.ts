@@ -215,6 +215,17 @@ export const FulfillOrderResponse = zod.object({
   orderedAt: zod.string(),
 });
 
+export const SendOrderReceiptParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const SendOrderReceiptResponse = zod.object({
+  sent: zod.boolean(),
+  orderId: zod.string(),
+  recipientEmail: zod.string(),
+  reason: zod.string().optional(),
+});
+
 export const listProductsQueryRangeDefault = `30d`;
 
 export const ListProductsQueryParams = zod.object({

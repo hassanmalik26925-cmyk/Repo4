@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, CheckCircle2, Loader2, Copy, Truck, CreditCard, Mail, ChevronRight } from "lucide-react";
-import { useListOrders, useGetOrder, useFulfillOrder, getListOrdersQueryKey } from "@workspace/api-client-react";
+import { useListOrders, useGetOrder, useFulfillOrder, useSendOrderReceipt, getListOrdersQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDateRange } from "../contexts/DateRangeContext";
 import { Skeleton, EmptyState } from "../components/UIPrimitives";
@@ -216,8 +216,23 @@ function OrderDetailSheet({ orderId, onClose, range }: { orderId: string; onClos
     },
   });
 
+  const [receiptState, setReceiptState] = useState<"idle" | "sent" | "failed">("idle");
+  const sendReceipt = useSendOrderReceipt({
+    mutation: {
+      onSuccess: (data) => {
+        setReceiptState(data.sent ? "sent" : "failed");
+        setTimeout(() => setReceiptState("idle"), 2500);
+      },
+      onError: () => {
+        setReceiptState("failed");
+        setTimeout(() => setReceiptState("idle"), 2500);
+      },
+    },
+  });
+
   const o = detail.data?.order;
   const canFulfill = o && o.status !== "fulfilled" && o.status !== "cancelled" && o.status !== "refunded";
+  const statusAccent = STATUS_COLOR[o?.status ?? ""] ?? "#6B7280";
 
   return (
     <motion.div
@@ -317,9 +332,34 @@ function OrderDetailSheet({ orderId, onClose, range }: { orderId: string; onClos
               </div>
             </div>
             <div className="mx-5 flex gap-3">
-              <button className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-[hsl(var(--card-border))] text-sm font-semibold hover-elevate">
-                <Mail className="h-4 w-4" /> Email receipt
-              </button>
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={() => { if (receiptState === "idle" && !sendReceipt.isPending) sendReceipt.mutate({ id: orderId }); }}
+                disabled={sendReceipt.isPending}
+                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full border text-sm font-semibold transition-colors disabled:opacity-70"
+                style={
+                  receiptState === "sent"
+                    ? { borderColor: "#22C55E", background: "#22C55E18", color: "#22C55E" }
+                    : receiptState === "failed"
+                      ? { borderColor: "#EF4444", background: "#EF444418", color: "#EF4444" }
+                      : { borderColor: `${statusAccent}55`, background: `${statusAccent}10`, color: statusAccent }
+                }
+              >
+                {sendReceipt.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : receiptState === "sent" ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <Mail className="h-4 w-4" />
+                )}
+                {sendReceipt.isPending
+                  ? "Sending…"
+                  : receiptState === "sent"
+                    ? `Sent to ${detail.data?.customer?.email ?? "customer"}`
+                    : receiptState === "failed"
+                      ? "Not sent — check email setup"
+                      : "Email receipt"}
+              </motion.button>
               {canFulfill && (
                 <button
                   onClick={() => fulfill.mutate({ id: orderId })}

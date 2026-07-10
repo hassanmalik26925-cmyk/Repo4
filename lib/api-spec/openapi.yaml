@@ -242,6 +242,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /orders/{id}/send-receipt:
+    post:
+      operationId: sendOrderReceipt
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Receipt send result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendReceiptResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /products:
     get:
       operationId: listProducts
@@ -1027,6 +1052,15 @@ components:
         status: { type: string }
         totalAmount: { type: number }
         orderedAt: { type: string }
+
+    SendReceiptResponse:
+      type: object
+      required: [sent, orderId, recipientEmail]
+      properties:
+        sent: { type: boolean }
+        orderId: { type: string }
+        recipientEmail: { type: string }
+        reason: { type: string }
 
     OrderDetail:
       type: object

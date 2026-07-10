@@ -61,6 +61,7 @@ import type {
   RegisterBody,
   ResetPasswordBody,
   RevenuePoint,
+  SendReceiptResponse,
   Settings,
   ShippingRate,
   SuccessResponse,
@@ -918,6 +919,84 @@ export const useFulfillOrder = <
   TContext
 > => {
   return useMutation(getFulfillOrderMutationOptions(options));
+};
+
+export const getSendOrderReceiptUrl = (id: string) => {
+  return `/api/orders/${id}/send-receipt`;
+};
+
+export const sendOrderReceipt = async (
+  id: string,
+  options?: RequestInit,
+): Promise<SendReceiptResponse> => {
+  return customFetch<SendReceiptResponse>(getSendOrderReceiptUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getSendOrderReceiptMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendOrderReceipt>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendOrderReceipt>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["sendOrderReceipt"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendOrderReceipt>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return sendOrderReceipt(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendOrderReceiptMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendOrderReceipt>>
+>;
+
+export type SendOrderReceiptMutationError = ErrorType<ErrorResponse>;
+
+export const useSendOrderReceipt = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendOrderReceipt>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendOrderReceipt>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getSendOrderReceiptMutationOptions(options));
 };
 
 export const getListProductsUrl = (params?: ListProductsParams) => {

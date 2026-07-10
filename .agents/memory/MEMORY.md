@@ -4,3 +4,4 @@
 - [Demo vs real users](demo-vs-real-users.md) — disconnect is a real DB toggle for all users; demo visibility is a frontend gate bypass + periodic reseed to avoid stale dates.
 - [Router mount order](router-mount-order.md) — unscoped router.use(requireAdmin) in one sub-router can block unrelated routes registered after it; always scope with a path prefix.
 - [Metrics formulas](metrics-formulas.md) — revenue/profit/ROAS differ intentionally by section (order revenue vs ad-attributed vs per-product); historical order_items freeze price/cost at sale time.
+- [Receipt email identity](receipt-email-identity.md) — no separate from-address; "from" is the account's own name/email (no store-email field exists in schema).

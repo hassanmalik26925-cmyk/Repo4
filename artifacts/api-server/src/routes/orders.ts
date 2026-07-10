@@ -3,6 +3,7 @@ import {
   ListOrdersResponse,
   GetOrderResponse,
   FulfillOrderResponse,
+  SendOrderReceiptResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { dateWindow, parseRange } from "../lib/dateRange";
@@ -87,6 +88,33 @@ router.post("/orders/:id/fulfill", async (req, res): Promise<void> => {
       status: updated.status,
       totalAmount: Number(updated.totalAmount),
       orderedAt: updated.orderedAt.toISOString(),
+    }),
+  );
+});
+
+router.post("/orders/:id/send-receipt", async (req, res): Promise<void> => {
+  const userId = req.user!.sub;
+  const id = Array.isArray(req.params.id) ? req.params.id[0]! : req.params.id;
+  const result = await OrderService.sendReceiptNow(userId, id);
+  if (!result) {
+    res.status(404).json({ error: "Order not found" });
+    return;
+  }
+  if (result.sent) {
+    await ActivityService.log({
+      userId,
+      type: "receipt.sent",
+      title: `Receipt emailed to ${result.recipientEmail}`,
+      entityType: "order",
+      entityId: id,
+    });
+  }
+  res.json(
+    SendOrderReceiptResponse.parse({
+      sent: result.sent,
+      orderId: id,
+      recipientEmail: result.recipientEmail,
+      reason: result.reason,
     }),
   );
 });

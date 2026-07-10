@@ -254,6 +254,84 @@ export class OrderService {
    * comes from the order's linked customer record — no mock addresses.
    * Best-effort: never throws, so it never blocks the order flow.
    */
+  /**
+   * Manual, tap-to-send path: sends (or resends) a receipt for one specific
+   * order right now, using the customer email already shown in the app and
+   * the account's own name/email as the store identity. Returns whether the
+   * send succeeded so the UI can reflect real success/failure state.
+   */
+  static async sendReceiptNow(
+    userId: string,
+    orderId: string,
+  ): Promise<{ sent: boolean; recipientEmail: string; reason?: string } | null> {
+    const [user] = await db
+      .select({ name: usersTable.name, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+    if (!user) return null;
+
+    const [row] = await db
+      .select({
+        id: ordersTable.id,
+        orderNumber: ordersTable.orderNumber,
+        status: ordersTable.status,
+        subtotal: ordersTable.subtotal,
+        shipping: ordersTable.shipping,
+        tax: ordersTable.tax,
+        totalAmount: ordersTable.totalAmount,
+        orderedAt: ordersTable.orderedAt,
+        customerName: customersTable.name,
+        customerEmail: customersTable.email,
+      })
+      .from(ordersTable)
+      .innerJoin(customersTable, eq(customersTable.id, ordersTable.customerId))
+      .where(and(eq(ordersTable.userId, userId), eq(ordersTable.id, orderId)));
+    if (!row) return null;
+
+    const items = await db
+      .select()
+      .from(orderItemsTable)
+      .where(eq(orderItemsTable.orderId, row.id));
+
+    const html = buildReceiptHtml({
+      storeName: user.name,
+      status: row.status,
+      orderNumber: row.orderNumber,
+      orderedAt: row.orderedAt,
+      customerName: row.customerName,
+      items: items.map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        unitPrice: Number(i.unitPrice),
+      })),
+      subtotal: Number(row.subtotal),
+      shipping: Number(row.shipping),
+      tax: Number(row.tax),
+      total: Number(row.totalAmount),
+    });
+
+    const ok = await sendMail({
+      to: row.customerEmail,
+      fromName: user.name,
+      fromEmail: user.email,
+      subject: `Your receipt from ${user.name} — Order ${row.orderNumber}`,
+      html,
+    });
+
+    if (ok) {
+      await db
+        .update(ordersTable)
+        .set({ receiptSentAt: new Date() })
+        .where(eq(ordersTable.id, row.id));
+      return { sent: true, recipientEmail: row.customerEmail };
+    }
+    return {
+      sent: false,
+      recipientEmail: row.customerEmail,
+      reason: "Email delivery is not configured yet (SMTP credentials missing).",
+    };
+  }
+
   static async sendPendingReceipts(userId: string): Promise<number> {
     const [user] = await db
       .select({ name: usersTable.name, email: usersTable.email })
@@ -294,6 +372,7 @@ export class OrderService {
 
       const html = buildReceiptHtml({
         storeName: user.name,
+        status: o.status,
         orderNumber: o.orderNumber,
         orderedAt: o.orderedAt,
         customerName: o.customerName,
@@ -330,8 +409,17 @@ export class OrderService {
   }
 }
 
+const RECEIPT_THEME: Record<string, { accent: string; bg: string; label: string }> = {
+  pending: { accent: "#F59E0B", bg: "#FFFBEB", label: "Payment Pending" },
+  paid: { accent: "#0EA5E9", bg: "#F0F9FF", label: "Payment Received" },
+  fulfilled: { accent: "#22C55E", bg: "#F0FDF4", label: "Order Shipped" },
+  cancelled: { accent: "#6B7280", bg: "#F9FAFB", label: "Order Cancelled" },
+  refunded: { accent: "#EF4444", bg: "#FEF2F2", label: "Order Refunded" },
+};
+
 function buildReceiptHtml(input: {
   storeName: string;
+  status: string;
   orderNumber: string;
   orderedAt: Date;
   customerName: string;
@@ -341,6 +429,7 @@ function buildReceiptHtml(input: {
   tax: number;
   total: number;
 }): string {
+  const theme = RECEIPT_THEME[input.status] ?? RECEIPT_THEME.paid!;
   const money = (n: number) => `$${n.toFixed(2)}`;
   const rows = input.items
     .map(
@@ -354,27 +443,32 @@ function buildReceiptHtml(input: {
     .join("");
 
   return `
-  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;color:#111">
-    <h2 style="margin:0 0 4px">${input.storeName}</h2>
-    <p style="color:#555;margin:0 0 24px">Thank you for your order!</p>
-    <p style="margin:0 0 4px"><strong>Order ${input.orderNumber}</strong></p>
-    <p style="color:#555;margin:0 0 24px">${input.orderedAt.toLocaleDateString()} · ${input.customerName}</p>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-      <thead>
-        <tr style="border-bottom:1px solid #e5e5e5">
-          <th style="text-align:left;padding-bottom:8px;color:#888;font-size:12px">ITEM</th>
-          <th style="text-align:center;padding-bottom:8px;color:#888;font-size:12px">QTY</th>
-          <th style="text-align:right;padding-bottom:8px;color:#888;font-size:12px">PRICE</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <table style="width:100%;border-collapse:collapse">
-      <tr><td style="color:#555;padding:2px 0">Subtotal</td><td style="text-align:right;padding:2px 0">${money(input.subtotal)}</td></tr>
-      <tr><td style="color:#555;padding:2px 0">Shipping</td><td style="text-align:right;padding:2px 0">${money(input.shipping)}</td></tr>
-      <tr><td style="color:#555;padding:2px 0">Tax</td><td style="text-align:right;padding:2px 0">${money(input.tax)}</td></tr>
-      <tr style="border-top:1px solid #e5e5e5"><td style="padding-top:8px;font-weight:600">Total</td><td style="text-align:right;padding-top:8px;font-weight:600">${money(input.total)}</td></tr>
-    </table>
-    <p style="color:#999;font-size:12px;margin-top:32px">Sent by ${input.storeName} via Pulse Commerce.</p>
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;color:#111;border:1px solid #ececec;border-radius:16px;overflow:hidden">
+    <div style="background:${theme.bg};padding:24px 28px;border-bottom:3px solid ${theme.accent}">
+      <span style="display:inline-block;background:${theme.accent};color:#fff;font-size:11px;font-weight:700;letter-spacing:0.04em;padding:4px 10px;border-radius:999px;text-transform:uppercase">${theme.label}</span>
+      <h2 style="margin:12px 0 2px;color:#111">${input.storeName}</h2>
+      <p style="color:#555;margin:0">Thank you for your order!</p>
+    </div>
+    <div style="padding:24px 28px">
+      <p style="margin:0 0 4px"><strong>Order ${input.orderNumber}</strong></p>
+      <p style="color:#555;margin:0 0 24px">${input.orderedAt.toLocaleDateString()} · ${input.customerName}</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+        <thead>
+          <tr style="border-bottom:1px solid #e5e5e5">
+            <th style="text-align:left;padding-bottom:8px;color:#888;font-size:12px">ITEM</th>
+            <th style="text-align:center;padding-bottom:8px;color:#888;font-size:12px">QTY</th>
+            <th style="text-align:right;padding-bottom:8px;color:#888;font-size:12px">PRICE</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <table style="width:100%;border-collapse:collapse">
+        <tr><td style="color:#555;padding:2px 0">Subtotal</td><td style="text-align:right;padding:2px 0">${money(input.subtotal)}</td></tr>
+        <tr><td style="color:#555;padding:2px 0">Shipping</td><td style="text-align:right;padding:2px 0">${money(input.shipping)}</td></tr>
+        <tr><td style="color:#555;padding:2px 0">Tax</td><td style="text-align:right;padding:2px 0">${money(input.tax)}</td></tr>
+        <tr style="border-top:1px solid #e5e5e5"><td style="padding-top:8px;font-weight:600">Total</td><td style="text-align:right;padding-top:8px;font-weight:600;color:${theme.accent}">${money(input.total)}</td></tr>
+      </table>
+      <p style="color:#999;font-size:12px;margin-top:32px">Sent by ${input.storeName} via Pulse Commerce.</p>
+    </div>
   </div>`;
 }

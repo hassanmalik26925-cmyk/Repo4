@@ -116,6 +116,13 @@ export interface OrderSummary {
   orderedAt: string;
 }
 
+export interface SendReceiptResponse {
+  sent: boolean;
+  orderId: string;
+  recipientEmail: string;
+  reason?: string;
+}
+
 export type OrderDetailOrder = {
   id: string;
   orderNumber: string;
