@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Switch, Route } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
-import { Store } from "lucide-react";
+import { Store, Loader2 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { CurrencyProvider } from "./contexts/CurrencyContext";
 import { LoginPage } from "./pages/LoginPage";
@@ -13,8 +13,8 @@ import { ProductsPage } from "./pages/ProductsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { BottomNav, ScreenContainer, TopBar, type Screen } from "./components/AppShell";
-import { useListIntegrations } from "@workspace/api-client-react";
-import { OnboardingModal } from "./components/OnboardingModal";
+import { useListIntegrations, useGetOnboardingStatus } from "@workspace/api-client-react";
+import { SetupPage } from "./pages/SetupPage";
 import { ToastContainer } from "./components/ToastContainer";
 import { useSSE } from "./hooks/useSSE";
 
@@ -53,8 +53,21 @@ function NoIntegrationScreen({ onGoToSettings }: { onGoToSettings: () => void })
 function AuthenticatedApp() {
   const [screen, setScreen] = useState<Screen>("dashboard");
   const integrations = useListIntegrations();
+  const onboardingStatus = useGetOnboardingStatus();
   const { user } = useAuth();
   useSSE();
+
+  if (onboardingStatus.isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (onboardingStatus.data?.onboarded === false) {
+    return <SetupPage />;
+  }
 
   // Demo accounts always show full sample data, regardless of whether any
   // integration is currently marked connected/disconnected in Settings.
@@ -86,7 +99,6 @@ function AuthenticatedApp() {
   return (
     <CurrencyProvider>
       <div className="min-h-screen bg-background text-foreground">
-        <OnboardingModal />
         <ToastContainer />
         <TopBar />
         <ScreenContainer>
