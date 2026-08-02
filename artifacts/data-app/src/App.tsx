@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { Switch, Route } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import { Store } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 import { CurrencyProvider } from "./contexts/CurrencyContext";
 import { LoginPage } from "./pages/LoginPage";
+import { LandingPage } from "./pages/LandingPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { MarketingPage } from "./pages/MarketingPage";
@@ -26,7 +28,7 @@ function NoIntegrationScreen({ onGoToSettings }: { onGoToSettings: () => void })
       <motion.div
         animate={{ y: [0, -8, 0] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-sky-500/20 to-violet-500/20 text-sky-500"
+        className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10 text-primary"
       >
         <Store className="h-10 w-10" />
       </motion.div>
@@ -39,7 +41,8 @@ function NoIntegrationScreen({ onGoToSettings }: { onGoToSettings: () => void })
       <motion.button
         onClick={onGoToSettings}
         whileTap={{ scale: 0.95 }}
-        className="rounded-2xl bg-sky-500 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 transition-transform"
+        className="rounded-2xl bg-primary px-8 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90"
+        data-testid="btn-connect-store"
       >
         Connect a store
       </motion.button>
@@ -117,6 +120,20 @@ function AuthenticatedApp() {
   );
 }
 
+function UnauthenticatedApp() {
+  return (
+    <Switch>
+      <Route path="/login"><LoginPage defaultMode="login" /></Route>
+      <Route path="/register"><LoginPage defaultMode="register" /></Route>
+      <Route path="/forgot-password"><LoginPage defaultMode="forgot" /></Route>
+      <Route path="/reset-password"><LoginPage defaultMode="reset" /></Route>
+      <Route path="/"><LandingPage /></Route>
+      {/* Fallback for unknown routes */}
+      <Route><LandingPage /></Route>
+    </Switch>
+  );
+}
+
 export default function App() {
   const { ready, user } = useAuth();
 
@@ -126,13 +143,13 @@ export default function App() {
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="h-6 w-6 rounded-full border-2 border-sky-500 border-t-transparent"
+          className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent"
         />
       </div>
     );
   }
 
-  if (!user) return <LoginPage />;
+  if (!user) return <UnauthenticatedApp />;
 
   return <AuthenticatedApp />;
 }
