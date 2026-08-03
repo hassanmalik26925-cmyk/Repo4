@@ -11,6 +11,7 @@ import {
 } from "@workspace/api-client-react";
 import { useDateRange } from "../contexts/DateRangeContext";
 import { Skeleton, EmptyState } from "../components/UIPrimitives";
+import { ConnectFirst } from "../components/ConnectFirst";
 import { formatNumber } from "../lib/format";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { AnimatedPage, AnimatedList, AnimatedListItem, AnimatedCard } from "../components/AnimatedPage";
@@ -217,7 +218,12 @@ function EditProductForm({ product, onDone }: { product: any; onDone: () => void
   );
 }
 
-export function ProductsPage() {
+interface ProductsPageProps {
+  hasConnected?: boolean;
+  onGoToSettings?: () => void;
+}
+
+export function ProductsPage({ hasConnected = true, onGoToSettings }: ProductsPageProps) {
   const { range } = useDateRange();
   const { format: fmt, formatCompact } = useCurrency();
   const queryClient = useQueryClient();
@@ -270,8 +276,17 @@ export function ProductsPage() {
           </button>
         </motion.div>
 
+        {!hasConnected && (
+          <ConnectFirst
+            title="Connect your store to see product performance"
+            description="Link your store to track revenue, profit margin, and ROAS per product — and manage your catalog in one place."
+            onGoToSettings={() => onGoToSettings?.()}
+          />
+        )}
+
         {showAddForm && <AddProductForm onDone={() => setShowAddForm(false)} />}
 
+        {hasConnected && <>
         <div className="mb-4 grid grid-cols-3 gap-2">
           <AnimatedCard delay={0.05}>
             <div className="rounded-2xl border border-[hsl(var(--card-border))] bg-card p-3">
@@ -395,6 +410,7 @@ export function ProductsPage() {
             })}
           </AnimatedList>
         )}
+        </>}
       </div>
     </AnimatedPage>
   );

@@ -5,6 +5,7 @@ import { useListOrders, useGetOrder, useFulfillOrder, useSendOrderReceipt, getLi
 import { useQueryClient } from "@tanstack/react-query";
 import { useDateRange } from "../contexts/DateRangeContext";
 import { Skeleton, EmptyState } from "../components/UIPrimitives";
+import { ConnectFirst } from "../components/ConnectFirst";
 import { formatDateShort } from "../lib/format";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { AnimatedPage, AnimatedList, AnimatedListItem, AnimatedCard } from "../components/AnimatedPage";
@@ -31,7 +32,12 @@ const PLATFORM_COLOR: Record<string, string> = {
   direct: "#F97316", manual: "#6B7280",
 };
 
-export function OrdersPage() {
+interface OrdersPageProps {
+  hasConnected?: boolean;
+  onGoToSettings?: () => void;
+}
+
+export function OrdersPage({ hasConnected = true, onGoToSettings }: OrdersPageProps) {
   const { range } = useDateRange();
   const { format: fmt } = useCurrency();
   const [status, setStatus] = useState("all");
@@ -58,6 +64,16 @@ export function OrdersPage() {
           </button>
         </motion.div>
 
+        {/* Connect gate */}
+        {!hasConnected && (
+          <ConnectFirst
+            title="Connect your store to see orders"
+            description="Link your Shopify, WooCommerce, or Amazon account to start tracking every order, fulfilment, and customer in one place."
+            onGoToSettings={() => onGoToSettings?.()}
+          />
+        )}
+
+        {hasConnected && <>
         {/* Stats row */}
         <div className="mb-4 grid grid-cols-3 gap-2">
           <AnimatedCard delay={0.05}>
@@ -196,6 +212,7 @@ export function OrdersPage() {
         <AnimatePresence>
           {openId && <OrderDetailSheet orderId={openId} onClose={() => setOpenId(null)} range={range} />}
         </AnimatePresence>
+        </>}
       </div>
     </AnimatedPage>
   );

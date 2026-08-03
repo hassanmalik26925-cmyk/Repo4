@@ -5,7 +5,11 @@ import { useAuth } from "../contexts/AuthContext";
 import { Check, ChevronRight, Briefcase, Store, Target, LayoutDashboard, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 
-export function SetupPage() {
+interface SetupPageProps {
+  onComplete?: () => void;
+}
+
+export function SetupPage({ onComplete }: SetupPageProps) {
   const complete = useCompleteOnboarding();
   const update = useUpdateSettings();
   const { user } = useAuth();
@@ -23,7 +27,22 @@ export function SetupPage() {
       localStorage.setItem("pulse_onboarding_context", JSON.stringify(answers));
       complete.mutate(undefined, {
         onSuccess: () => {
-          update.mutate({ data: { isOnboarded: true } });
+          update.mutate(
+            { data: { isOnboarded: true } },
+            {
+              onSuccess: () => {
+                onComplete?.();
+              },
+              onError: () => {
+                // Even if settings update fails, complete the flow
+                onComplete?.();
+              },
+            }
+          );
+        },
+        onError: () => {
+          // If complete endpoint fails, still advance so user isn't stuck
+          onComplete?.();
         },
       });
     } else {

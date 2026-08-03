@@ -15,6 +15,7 @@ import { useDateRange, RANGE_LABELS } from "../contexts/DateRangeContext";
 import {
   Card, StatCard, ChartTooltip, C, Skeleton,
 } from "../components/UIPrimitives";
+import { ConnectFirst } from "../components/ConnectFirst";
 import {
   formatNumber, formatDelta, formatRelative, formatDateShort,
 } from "../lib/format";
@@ -136,7 +137,7 @@ function InsightCard({ insight, onNavigate }: { insight: InsightItem; onNavigate
   );
 }
 
-export function DashboardPage({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
+export function DashboardPage({ onNavigate, hasConnected = true, onGoToSettings }: { onNavigate: (screen: Screen) => void; hasConnected?: boolean; onGoToSettings?: () => void }) {
   const { range } = useDateRange();
   const { format: fmt } = useCurrency();
   const overview = useGetDashboardOverview({ range });
@@ -177,8 +178,17 @@ export function DashboardPage({ onNavigate }: { onNavigate: (screen: Screen) => 
           )}
         </motion.div>
 
+        {/* Connect-first gate */}
+        {!hasConnected && (
+          <ConnectFirst
+            title="Connect your store to see dashboard data"
+            description="Link your Shopify, WooCommerce, or ad platform to start tracking revenue, profit, and ROAS in real time."
+            onGoToSettings={() => onGoToSettings?.()}
+          />
+        )}
+
         {/* Stat grid */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3">
+        {hasConnected && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3" data-testid="stat-grid">
           {data ? (
             [
               { label: "Revenue", value: fmt(data.revenue.value), d: formatDelta(data.revenue.deltaPct), color: C.green, icon: <CircleDollarSign className="h-4 w-4" />, sub: sub },
@@ -202,7 +212,10 @@ export function DashboardPage({ onNavigate }: { onNavigate: (screen: Screen) => 
               <Skeleton className="h-28 rounded-2xl" />
             </>
           )}
-        </div>
+        </div>}
+
+        {/* Charts + Activity — only when connected */}
+        {hasConnected && <>
 
         {/* Revenue chart */}
         <AnimatedCard delay={0.3}>
@@ -348,6 +361,8 @@ export function DashboardPage({ onNavigate }: { onNavigate: (screen: Screen) => 
             )}
           </Card>
         </AnimatedCard>
+
+        </>}
       </div>
     </AnimatedPage>
   );

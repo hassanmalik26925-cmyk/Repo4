@@ -4,6 +4,7 @@ import { Megaphone } from "lucide-react";
 import { useGetMarketingSummary, useListCampaigns } from "@workspace/api-client-react";
 import { useDateRange, RANGE_LABELS } from "../contexts/DateRangeContext";
 import { Skeleton, EmptyState } from "../components/UIPrimitives";
+import { ConnectFirst } from "../components/ConnectFirst";
 import { formatNumber } from "../lib/format";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { AnimatedPage, AnimatedCard, AnimatedList, AnimatedListItem } from "../components/AnimatedPage";
@@ -27,7 +28,12 @@ function roasColor(roas: number): string {
   return "#EF4444";
 }
 
-export function MarketingPage() {
+interface MarketingPageProps {
+  hasConnected?: boolean;
+  onGoToSettings?: () => void;
+}
+
+export function MarketingPage({ hasConnected = true, onGoToSettings }: MarketingPageProps) {
   const { range } = useDateRange();
   const { format: fmt, formatCompact } = useCurrency();
   const [sort, setSort] = useState<SortKey>("roas");
@@ -55,6 +61,15 @@ export function MarketingPage() {
           <p className="text-sm text-muted-foreground">{RANGE_LABELS[range]}</p>
         </motion.div>
 
+        {!hasConnected && (
+          <ConnectFirst
+            title="Connect your ad platforms to see marketing data"
+            description="Link Meta Ads, Google Ads, or TikTok Ads to start tracking spend, ROAS, and campaign performance in real time."
+            onGoToSettings={() => onGoToSettings?.()}
+          />
+        )}
+
+        {hasConnected && <>
         <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { label: "Ad Spend", value: s ? formatCompact(s.adSpend) : "-", accent: false, delay: 0.05 },
@@ -145,6 +160,7 @@ export function MarketingPage() {
             })}
           </AnimatedList>
         )}
+        </>}
       </div>
     </AnimatedPage>
   );

@@ -66,7 +66,7 @@ function AuthenticatedApp() {
   }
 
   if (onboardingStatus.data?.onboarded === false) {
-    return <SetupPage />;
+    return <SetupPage onComplete={() => onboardingStatus.refetch()} />;
   }
 
   // Demo accounts always show full sample data, regardless of whether any
@@ -76,7 +76,7 @@ function AuthenticatedApp() {
     integrations.isLoading ||
     (integrations.data ?? []).some((i) => i.status === "connected");
 
-  const dataScreen = hasConnected ? (
+  const dataScreen = (
     <AnimatePresence mode="wait">
       <motion.div
         key={screen}
@@ -85,15 +85,13 @@ function AuthenticatedApp() {
         exit={{ opacity: 0, x: -20 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
-        {screen === "dashboard" && <DashboardPage onNavigate={setScreen} />}
-        {screen === "orders" && <OrdersPage />}
-        {screen === "marketing" && <MarketingPage />}
-        {screen === "products" && <ProductsPage />}
+        {screen === "dashboard" && <DashboardPage onNavigate={setScreen} hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
+        {screen === "orders" && <OrdersPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
+        {screen === "marketing" && <MarketingPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
+        {screen === "products" && <ProductsPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "admin" && <AdminPage />}
       </motion.div>
     </AnimatePresence>
-  ) : (
-    <NoIntegrationScreen onGoToSettings={() => setScreen("settings")} />
   );
 
   return (
