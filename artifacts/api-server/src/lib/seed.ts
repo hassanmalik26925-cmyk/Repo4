@@ -6,6 +6,10 @@ import {
   orderItemsTable,
   adCampaignsTable,
   adMetricsTable,
+  adSetsTable,
+  adSetMetricsTable,
+  adCreativesTable,
+  creativeMetricsTable,
   integrationsTable,
   activitiesTable,
 } from "@workspace/db";
@@ -40,6 +44,16 @@ const CAMPAIGNS = [
   { name: "Google Shopping", channel: "google", baseSpend: 207, baseRoas: 3.9, baseCtr: 1.5 },
   { name: "Summer Sale Meta", channel: "meta", baseSpend: 280, baseRoas: 3.75, baseCtr: 1.9 },
   { name: "TikTok Awareness", channel: "tiktok", baseSpend: 60, baseRoas: 2.4, baseCtr: 3.1 },
+];
+
+const AD_SET_CONFIG = [
+  { name: "Broad prospecting", baseRoas: 3.2, baseCtr: 1.8 },
+  { name: "High-intent retargeting", baseRoas: 6.4, baseCtr: 3.4 },
+];
+
+const CREATIVE_CONFIG = [
+  { name: "Founder story video", format: "video", multiplier: 1.2 },
+  { name: "Product benefit carousel", format: "carousel", multiplier: 0.9 },
 ];
 
 function rand(seed: number): () => number {
@@ -237,6 +251,91 @@ async function seedTimeSeries(
       })
       .returning({ id: adCampaignsTable.id });
     if (!camp) continue;
+    const adSetRows: Array<{ id: string; baseRoas: number; baseCtr: number }> = [];
+    for (const [adSetIndex, adSetConfig] of AD_SET_CONFIG.entries()) {
+      const [adSet] = await db
+        .insert(adSetsTable)
+        .values({
+          userId,
+          campaignId: camp.id,
+          channel: c.channel,
+          externalId: `seed-${c.name}-adset-${adSetIndex}`,
+          name: `${c.name} · ${adSetConfig.name}`,
+          status: "active",
+        })
+        .onConflictDoUpdate({
+          target: [adSetsTable.userId, adSetsTable.channel, adSetsTable.externalId],
+          set: { name: `${c.name} · ${adSetConfig.name}` },
+        })
+        .returning({ id: adSetsTable.id });
+      if (!adSet) continue;
+      adSetRows.push({ id: adSet.id, baseRoas: adSetConfig.baseRoas, baseCtr: adSetConfig.baseCtr });
+
+      for (const [creativeIndex, creativeConfig] of CREATIVE_CONFIG.entries()) {
+        const [creative] = await db
+          .insert(adCreativesTable)
+          .values({
+            userId,
+            adSetId: adSet.id,
+            campaignId: camp.id,
+            channel: c.channel,
+            externalId: `seed-${c.name}-adset-${adSetIndex}-creative-${creativeIndex}`,
+            name: `${adSetConfig.name} · ${creativeConfig.name}`,
+            format: creativeConfig.format,
+            status: "active",
+          })
+          .onConflictDoUpdate({
+            target: [adCreativesTable.userId, adCreativesTable.channel, adCreativesTable.externalId],
+            set: { name: `${adSetConfig.name} · ${creativeConfig.name}`, format: creativeConfig.format },
+          })
+          .returning({ id: adCreativesTable.id });
+        if (!creative) continue;
+
+        for (let dayOffset = 90; dayOffset >= 0; dayOffset--) {
+          const d = new Date(now);
+          d.setUTCDate(now.getUTCDate() - dayOffset);
+          const dateStr = d.toISOString().slice(0, 10);
+          const variation = 0.7 + r() * 0.6;
+          const spend = c.baseSpend * variation * (adSetIndex === 1 ? 0.65 : 0.35) * 0.5;
+          const revenue = spend * adSetRows[adSetIndex]!.baseRoas * creativeConfig.multiplier * (0.85 + r() * 0.3);
+          const impressions = Math.floor(spend * 1500 * (0.8 + r() * 0.4));
+          const clicks = Math.floor(impressions * (adSetRows[adSetIndex]!.baseCtr / 100));
+          const conversions = Math.floor(clicks * (0.04 + r() * 0.04));
+          await db
+            .insert(creativeMetricsTable)
+            .values({
+              userId,
+              creativeId: creative.id,
+              date: dateStr,
+              impressions,
+              clicks,
+              conversions,
+              spend: spend.toFixed(2),
+              revenue: revenue.toFixed(2),
+            })
+            .onConflictDoUpdate({
+              target: [creativeMetricsTable.creativeId, creativeMetricsTable.date],
+              set: { impressions, clicks, conversions, spend: spend.toFixed(2), revenue: revenue.toFixed(2) },
+            });
+          await db
+            .insert(adSetMetricsTable)
+            .values({
+              userId,
+              adSetId: adSet.id,
+              date: dateStr,
+              impressions,
+              clicks,
+              conversions,
+              spend: spend.toFixed(2),
+              revenue: revenue.toFixed(2),
+            })
+            .onConflictDoUpdate({
+              target: [adSetMetricsTable.adSetId, adSetMetricsTable.date],
+              set: { impressions, clicks, conversions, spend: spend.toFixed(2), revenue: revenue.toFixed(2) },
+            });
+        }
+      }
+    }
     for (let dayOffset = 90; dayOffset >= 0; dayOffset--) {
       const d = new Date(now);
       d.setUTCDate(now.getUTCDate() - dayOffset);
@@ -273,6 +372,8 @@ async function seedTimeSeries(
 // even though the account is fully wired up. Call this on every demo login
 // so the time series always covers up through today.
 export async function refreshDemoDataIfStale(userId: string): Promise<void> {
+  await ensureDemoPerformanceHighlights(userId);
+
   const [latest] = await db
     .select({ orderedAt: ordersTable.orderedAt })
     .from(ordersTable)
@@ -296,10 +397,125 @@ export async function refreshDemoDataIfStale(userId: string): Promise<void> {
   // Orders cascade-delete their order items; ad metrics are cleared per-user.
   await db.delete(ordersTable).where(eq(ordersTable.userId, userId));
   await db.delete(adMetricsTable).where(eq(adMetricsTable.userId, userId));
+  await db.delete(adSetMetricsTable).where(eq(adSetMetricsTable.userId, userId));
+  await db.delete(creativeMetricsTable).where(eq(creativeMetricsTable.userId, userId));
 
   await seedTimeSeries(
     userId,
     products.map((p) => ({ id: p.id, price: Number(p.price), cogs: Number(p.cogs) })),
     customers.map((c) => c.id),
   );
+}
+
+/**
+ * Backfill the normalized ad-set/creative highlight tables for demo accounts
+ * created before those tables existed. The source remains the existing seeded
+ * campaign metrics; this is not synthetic API data for real users.
+ */
+async function ensureDemoPerformanceHighlights(userId: string): Promise<void> {
+  const [existing] = await db
+    .select({ id: adSetsTable.id })
+    .from(adSetsTable)
+    .where(eq(adSetsTable.userId, userId))
+    .limit(1);
+  if (existing) return;
+
+  const campaigns = await db
+    .select({
+      id: adCampaignsTable.id,
+      channel: adCampaignsTable.channel,
+      name: adCampaignsTable.name,
+    })
+    .from(adCampaignsTable)
+    .where(eq(adCampaignsTable.userId, userId));
+
+  for (const campaign of campaigns) {
+    const campaignMetrics = await db
+      .select()
+      .from(adMetricsTable)
+      .where(
+        and(
+          eq(adMetricsTable.userId, userId),
+          eq(adMetricsTable.campaignId, campaign.id),
+        ),
+      );
+
+    for (const [adSetIndex, adSetName] of ["Broad prospecting", "High-intent retargeting"].entries()) {
+      const [adSet] = await db
+        .insert(adSetsTable)
+        .values({
+          userId,
+          campaignId: campaign.id,
+          channel: campaign.channel,
+          externalId: `seed-${campaign.id}-backfill-adset-${adSetIndex}`,
+          name: `${campaign.name} · ${adSetName}`,
+          status: "active",
+        })
+        .onConflictDoNothing()
+        .returning({ id: adSetsTable.id });
+      if (!adSet) continue;
+
+      for (const [creativeIndex, creativeName] of ["Founder story video", "Product benefit carousel"].entries()) {
+        const [creative] = await db
+          .insert(adCreativesTable)
+          .values({
+            userId,
+            adSetId: adSet.id,
+            campaignId: campaign.id,
+            channel: campaign.channel,
+            externalId: `seed-${campaign.id}-backfill-creative-${adSetIndex}-${creativeIndex}`,
+            name: `${adSetName} · ${creativeName}`,
+            format: creativeIndex === 0 ? "video" : "carousel",
+            status: "active",
+          })
+          .onConflictDoNothing()
+          .returning({ id: adCreativesTable.id });
+        if (!creative) continue;
+
+        for (const metric of campaignMetrics) {
+          const split = adSetIndex === 1 ? 0.62 : 0.38;
+          const creativeSplit = creativeIndex === 0 ? 0.58 : 0.42;
+          const spend = Number(metric.spend) * split * creativeSplit;
+          const revenue = Number(metric.revenue) * split * creativeSplit;
+          const impressions = Math.floor(metric.impressions * split * creativeSplit);
+          const clicks = Math.floor(metric.clicks * split * creativeSplit);
+          const conversions = Math.floor(metric.conversions * split * creativeSplit);
+
+          await db
+            .insert(adSetMetricsTable)
+            .values({
+              userId,
+              adSetId: adSet.id,
+              date: metric.date,
+              spend: spend.toFixed(2),
+              revenue: revenue.toFixed(2),
+              impressions,
+              clicks,
+              conversions,
+            })
+            .onConflictDoUpdate({
+              target: [adSetMetricsTable.adSetId, adSetMetricsTable.date],
+              set: { spend: spend.toFixed(2), revenue: revenue.toFixed(2), impressions, clicks, conversions },
+            });
+
+          await db
+            .insert(creativeMetricsTable)
+            .values({
+              userId,
+              creativeId: creative.id,
+              date: metric.date,
+              spend: spend.toFixed(2),
+              revenue: revenue.toFixed(2),
+              impressions,
+              clicks,
+              conversions,
+            })
+            .onConflictDoUpdate({
+              target: [creativeMetricsTable.creativeId, creativeMetricsTable.date],
+              set: { spend: spend.toFixed(2), revenue: revenue.toFixed(2), impressions, clicks, conversions },
+            });
+        }
+      }
+    }
+  }
 }

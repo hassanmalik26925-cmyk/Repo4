@@ -642,6 +642,60 @@ export const GetInsightsSummaryResponse = zod.object({
       deltaPct: zod.number(),
     }),
   }),
+  highlights: zod.object({
+    adSets: zod.array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        channel: zod.string(),
+        parentName: zod.string().optional(),
+        spend: zod.number(),
+        revenue: zod.number(),
+        conversions: zod.number(),
+        clicks: zod.number(),
+        impressions: zod.number(),
+        cpa: zod.number(),
+        roas: zod.number(),
+        ctr: zod.number(),
+      }),
+    ),
+    creatives: zod.array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        channel: zod.string(),
+        parentName: zod.string().optional(),
+        spend: zod.number(),
+        revenue: zod.number(),
+        conversions: zod.number(),
+        clicks: zod.number(),
+        impressions: zod.number(),
+        cpa: zod.number(),
+        roas: zod.number(),
+        ctr: zod.number(),
+      }),
+    ),
+    repeatCustomers: zod.array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        email: zod.string(),
+        ordersCount: zod.number(),
+        totalSpent: zod.number(),
+        averageOrderValue: zod.number(),
+      }),
+    ),
+    suggestions: zod.array(
+      zod.object({
+        id: zod.string(),
+        severity: zod.string(),
+        title: zod.string(),
+        description: zod.string(),
+        metric: zod.string().optional(),
+        action: zod.string().optional(),
+      }),
+    ),
+  }),
 });
 
 export const listActivitiesQueryLimitDefault = 20;

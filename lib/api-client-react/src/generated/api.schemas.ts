@@ -343,10 +343,42 @@ export type InsightsSummaryTraffic = {
   conversions: Metric;
 };
 
+export interface PerformanceHighlight {
+  id: string;
+  name: string;
+  channel: string;
+  parentName?: string;
+  spend: number;
+  revenue: number;
+  conversions: number;
+  clicks: number;
+  impressions: number;
+  cpa: number;
+  roas: number;
+  ctr: number;
+}
+
+export interface RepeatCustomerHighlight {
+  id: string;
+  name: string;
+  email: string;
+  ordersCount: number;
+  totalSpent: number;
+  averageOrderValue: number;
+}
+
+export type InsightsSummaryHighlights = {
+  adSets: PerformanceHighlight[];
+  creatives: PerformanceHighlight[];
+  repeatCustomers: RepeatCustomerHighlight[];
+  suggestions: Insight[];
+};
+
 export interface InsightsSummary {
   customer: InsightsSummaryCustomer;
   store: InsightsSummaryStore;
   traffic: InsightsSummaryTraffic;
+  highlights: InsightsSummaryHighlights;
 }
 
 export type IntegrationsHealthIntegrationsItem = {

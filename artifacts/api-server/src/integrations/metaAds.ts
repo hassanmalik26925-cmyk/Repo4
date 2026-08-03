@@ -1,6 +1,14 @@
 import type { IntegrationAdapter, SyncResult } from "./types";
 import { ZERO_SYNC } from "./types";
-import { db, adCampaignsTable, adMetricsTable } from "@workspace/db";
+import {
+  db,
+  adCampaignsTable,
+  adMetricsTable,
+  adSetsTable,
+  adSetMetricsTable,
+  adCreativesTable,
+  creativeMetricsTable,
+} from "@workspace/db";
 import { logger } from "../lib/logger";
 
 interface MetaCreds extends Record<string, unknown> {
@@ -67,6 +75,143 @@ export const metaAdsAdapter: IntegrationAdapter = {
           .returning({ id: adCampaignsTable.id });
         if (!row) continue;
         result.campaignsAdded += 1;
+
+        const adSetData = await metaFetch<{
+          data: Array<{ id: string; name: string; status: string }>;
+        }>(credentials, `/${c.id}/adsets?fields=id,name,status&limit=100`);
+
+        for (const adSet of adSetData.data ?? []) {
+          const [adSetRow] = await db
+            .insert(adSetsTable)
+            .values({
+              userId,
+              campaignId: row.id,
+              channel: "meta",
+              externalId: adSet.id,
+              name: adSet.name,
+              status: adSet.status?.toLowerCase() ?? "active",
+            })
+            .onConflictDoUpdate({
+              target: [adSetsTable.userId, adSetsTable.channel, adSetsTable.externalId],
+              set: { name: adSet.name, status: adSet.status?.toLowerCase() ?? "active", campaignId: row.id },
+            })
+            .returning({ id: adSetsTable.id });
+          if (!adSetRow) continue;
+
+          const adSetInsights = await metaFetch<{
+            data: Array<{
+              date_start: string;
+              spend: string;
+              impressions: string;
+              clicks: string;
+              actions?: Array<{ action_type: string; value: string }>;
+              action_values?: Array<{ action_type: string; value: string }>;
+            }>;
+          }>(
+            credentials,
+            `/${adSet.id}/insights?fields=spend,impressions,clicks,actions,action_values&time_increment=1&date_preset=last_30d`,
+          );
+          for (const m of adSetInsights.data ?? []) {
+            const conversions = Number(m.actions?.find((a) => a.action_type === "purchase")?.value ?? 0);
+            const revenue = m.action_values?.find((a) => a.action_type === "purchase")?.value ?? "0";
+            await db
+              .insert(adSetMetricsTable)
+              .values({
+                userId,
+                adSetId: adSetRow.id,
+                date: m.date_start,
+                spend: m.spend,
+                impressions: Number(m.impressions ?? 0),
+                clicks: Number(m.clicks ?? 0),
+                conversions,
+                revenue,
+              })
+              .onConflictDoUpdate({
+                target: [adSetMetricsTable.adSetId, adSetMetricsTable.date],
+                set: {
+                  spend: m.spend,
+                  impressions: Number(m.impressions ?? 0),
+                  clicks: Number(m.clicks ?? 0),
+                  conversions,
+                  revenue,
+                },
+              });
+          }
+
+          const adsData = await metaFetch<{
+            data: Array<{
+              id: string;
+              name: string;
+              status: string;
+              creative?: { name?: string; title?: string; body?: string };
+            }>;
+          }>(credentials, `/${adSet.id}/ads?fields=id,name,status,creative{name,title,body}&limit=100`);
+          for (const ad of adsData.data ?? []) {
+            const [creativeRow] = await db
+              .insert(adCreativesTable)
+              .values({
+                userId,
+                adSetId: adSetRow.id,
+                campaignId: row.id,
+                channel: "meta",
+                externalId: ad.id,
+                name: ad.name || ad.creative?.name || ad.creative?.title || `Meta ad ${ad.id}`,
+                format: "ad",
+                status: ad.status?.toLowerCase() ?? "active",
+              })
+              .onConflictDoUpdate({
+                target: [adCreativesTable.userId, adCreativesTable.channel, adCreativesTable.externalId],
+                set: {
+                  name: ad.name || ad.creative?.name || ad.creative?.title || `Meta ad ${ad.id}`,
+                  status: ad.status?.toLowerCase() ?? "active",
+                  adSetId: adSetRow.id,
+                  campaignId: row.id,
+                },
+              })
+              .returning({ id: adCreativesTable.id });
+            if (!creativeRow) continue;
+
+            const creativeInsights = await metaFetch<{
+              data: Array<{
+                date_start: string;
+                spend: string;
+                impressions: string;
+                clicks: string;
+                actions?: Array<{ action_type: string; value: string }>;
+                action_values?: Array<{ action_type: string; value: string }>;
+              }>;
+            }>(
+              credentials,
+              `/${ad.id}/insights?fields=spend,impressions,clicks,actions,action_values&time_increment=1&date_preset=last_30d`,
+            );
+            for (const m of creativeInsights.data ?? []) {
+              const conversions = Number(m.actions?.find((a) => a.action_type === "purchase")?.value ?? 0);
+              const revenue = m.action_values?.find((a) => a.action_type === "purchase")?.value ?? "0";
+              await db
+                .insert(creativeMetricsTable)
+                .values({
+                  userId,
+                  creativeId: creativeRow.id,
+                  date: m.date_start,
+                  spend: m.spend,
+                  impressions: Number(m.impressions ?? 0),
+                  clicks: Number(m.clicks ?? 0),
+                  conversions,
+                  revenue,
+                })
+                .onConflictDoUpdate({
+                  target: [creativeMetricsTable.creativeId, creativeMetricsTable.date],
+                  set: {
+                    spend: m.spend,
+                    impressions: Number(m.impressions ?? 0),
+                    clicks: Number(m.clicks ?? 0),
+                    conversions,
+                    revenue,
+                  },
+                });
+            }
+          }
+        }
 
         const insightsData = await metaFetch<{
           data: Array<{

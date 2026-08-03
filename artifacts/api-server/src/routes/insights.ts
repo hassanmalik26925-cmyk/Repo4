@@ -351,6 +351,46 @@ router.get("/insights/summary", async (req, res): Promise<void> => {
       MarketingService.summary(userId, previous),
     ]);
 
+  const [performance, repeatCustomers] = await Promise.all([
+    MarketingService.performanceHighlights(userId, win),
+    CustomerService.repeatCustomers(userId, win),
+  ]);
+
+  const suggestions = [];
+  const topAdSet = performance.adSets[0];
+  if (topAdSet) {
+    suggestions.push({
+      id: "top-ad-set",
+      severity: "positive",
+      title: `${topAdSet.name} is your top ad set`,
+      description: `${topAdSet.name} in ${topAdSet.parentName ?? "your campaigns"} generated ${topAdSet.roas.toFixed(2)}x ROAS from ${topAdSet.spend.toFixed(0)} spend, producing ${topAdSet.revenue.toFixed(0)} revenue across ${topAdSet.conversions} conversions. Its ${topAdSet.ctr.toFixed(2)}% CTR is a strong signal to protect the audience and test incremental budget increases.`,
+      metric: `${topAdSet.roas.toFixed(2)}x ROAS`,
+      action: "Review top ad set",
+    });
+  }
+  const topCreative = performance.creatives[0];
+  if (topCreative) {
+    suggestions.push({
+      id: "top-creative",
+      severity: "positive",
+      title: `${topCreative.name} is your strongest creative`,
+      description: `${topCreative.name} in ${topCreative.parentName ?? "your ad sets"} drove ${topCreative.conversions} conversions at ${topCreative.roas.toFixed(2)}x ROAS. Keep this creative live while testing new hooks, formats, or opening frames against its ${topCreative.ctr.toFixed(2)}% CTR benchmark.`,
+      metric: `${topCreative.conversions} conversions`,
+      action: "Compare creative variants",
+    });
+  }
+  const topRepeatCustomer = repeatCustomers[0];
+  if (topRepeatCustomer) {
+    suggestions.push({
+      id: "repeat-customer",
+      severity: "info",
+      title: `${topRepeatCustomer.name} is buying repeatedly`,
+      description: `${topRepeatCustomer.name} placed ${topRepeatCustomer.ordersCount} orders in this period and spent ${topRepeatCustomer.totalSpent.toFixed(0)} total, with an average order value of ${topRepeatCustomer.averageOrderValue.toFixed(0)}. Consider a VIP offer, replenishment reminder, or referral request.`,
+      metric: `${topRepeatCustomer.ordersCount} orders`,
+      action: "View customer orders",
+    });
+  }
+
   const [revenue, orders] = currentStore;
   const [previousRevenue, previousOrders] = previousStore;
   const averageOrderValue = orders > 0 ? revenue / orders : 0;
@@ -388,6 +428,12 @@ router.get("/insights/summary", async (req, res): Promise<void> => {
           value: currentTraffic.conversions,
           deltaPct: pct(currentTraffic.conversions, previousTraffic.conversions),
         },
+      },
+      highlights: {
+        adSets: performance.adSets,
+        creatives: performance.creatives,
+        repeatCustomers,
+        suggestions,
       },
     }),
   );

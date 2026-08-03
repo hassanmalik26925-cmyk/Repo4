@@ -6,7 +6,15 @@
 
 import type { IntegrationAdapter, SyncResult } from "./types";
 import { ZERO_SYNC } from "./types";
-import { db, adCampaignsTable, adMetricsTable } from "@workspace/db";
+import {
+  db,
+  adCampaignsTable,
+  adMetricsTable,
+  adSetsTable,
+  adSetMetricsTable,
+  adCreativesTable,
+  creativeMetricsTable,
+} from "@workspace/db";
 import { logger } from "../lib/logger";
 import { withRetry, RateLimiter, sleep } from "../lib/rateLimit";
 
@@ -161,6 +169,154 @@ export const googleAdsAdapter: IntegrationAdapter = {
         .returning({ id: adCampaignsTable.id });
       if (!inserted) continue;
       result.campaignsAdded += 1;
+
+      const adGroupRows = await withRetry("google_ads:ad_groups", () =>
+        gaqlSearch(credentials, `
+          SELECT
+            campaign.id,
+            ad_group.id,
+            ad_group.name,
+            ad_group.status,
+            segments.date,
+            metrics.cost_micros,
+            metrics.impressions,
+            metrics.clicks,
+            metrics.conversions,
+            metrics.conversions_value
+          FROM ad_group
+          WHERE campaign.id = ${String(c.id)}
+            AND segments.date DURING LAST_90_DAYS
+        `)
+      );
+      const adGroups = new Map<string, string>();
+      for (const groupRow of adGroupRows) {
+        const group = groupRow.adGroup;
+        if (!group?.id || adGroups.has(String(group.id))) continue;
+        const [adSet] = await db
+          .insert(adSetsTable)
+          .values({
+            userId,
+            campaignId: inserted.id,
+            channel: "google",
+            externalId: String(group.id),
+            name: group.name ?? `Ad group ${group.id}`,
+            status: group.status?.toLowerCase() ?? "active",
+          })
+          .onConflictDoUpdate({
+            target: [adSetsTable.userId, adSetsTable.channel, adSetsTable.externalId],
+            set: {
+              name: group.name ?? `Ad group ${group.id}`,
+              status: group.status?.toLowerCase() ?? "active",
+              campaignId: inserted.id,
+            },
+          })
+          .returning({ id: adSetsTable.id });
+        if (adSet) adGroups.set(String(group.id), adSet.id);
+      }
+
+      for (const groupRow of adGroupRows) {
+        const group = groupRow.adGroup;
+        const date = groupRow.segments?.date;
+        const adSetId = group?.id ? adGroups.get(String(group.id)) : undefined;
+        if (!date || !adSetId) continue;
+        const m = groupRow.metrics;
+        await db
+          .insert(adSetMetricsTable)
+          .values({
+            userId,
+            adSetId,
+            date,
+            spend: String(Number(m.costMicros ?? 0) / 1_000_000),
+            impressions: Number(m.impressions ?? 0),
+            clicks: Number(m.clicks ?? 0),
+            conversions: Math.round(Number(m.conversions ?? 0)),
+            revenue: String(Number(m.conversionsValue ?? 0)),
+          })
+          .onConflictDoUpdate({
+            target: [adSetMetricsTable.adSetId, adSetMetricsTable.date],
+            set: {
+              spend: String(Number(m.costMicros ?? 0) / 1_000_000),
+              impressions: Number(m.impressions ?? 0),
+              clicks: Number(m.clicks ?? 0),
+              conversions: Math.round(Number(m.conversions ?? 0)),
+              revenue: String(Number(m.conversionsValue ?? 0)),
+            },
+          });
+      }
+
+      const creativeRows = await withRetry("google_ads:creatives", () =>
+        gaqlSearch(credentials, `
+          SELECT
+            campaign.id,
+            ad_group.id,
+            ad_group_ad.ad.id,
+            ad_group_ad.ad.name,
+            ad_group_ad.ad.type,
+            segments.date,
+            metrics.cost_micros,
+            metrics.impressions,
+            metrics.clicks,
+            metrics.conversions,
+            metrics.conversions_value
+          FROM ad_group_ad
+          WHERE campaign.id = ${String(c.id)}
+            AND segments.date DURING LAST_90_DAYS
+        `)
+      );
+      const creatives = new Map<string, string>();
+      for (const creativeRow of creativeRows) {
+        const ad = creativeRow.adGroupAd?.ad;
+        const adGroup = creativeRow.adGroup?.id;
+        const adSetId = adGroup ? adGroups.get(String(adGroup)) : undefined;
+        if (!ad?.id || !adSetId || creatives.has(String(ad.id))) continue;
+        const [creative] = await db
+          .insert(adCreativesTable)
+          .values({
+            userId,
+            adSetId,
+            campaignId: inserted.id,
+            channel: "google",
+            externalId: String(ad.id),
+            name: ad.name ?? `Google ad ${ad.id}`,
+            format: ad.type?.toLowerCase() ?? "ad",
+            status: "active",
+          })
+          .onConflictDoUpdate({
+            target: [adCreativesTable.userId, adCreativesTable.channel, adCreativesTable.externalId],
+            set: { name: ad.name ?? `Google ad ${ad.id}`, adSetId, campaignId: inserted.id },
+          })
+          .returning({ id: adCreativesTable.id });
+        if (creative) creatives.set(String(ad.id), creative.id);
+      }
+      for (const creativeRow of creativeRows) {
+        const ad = creativeRow.adGroupAd?.ad;
+        const date = creativeRow.segments?.date;
+        const creativeId = ad?.id ? creatives.get(String(ad.id)) : undefined;
+        if (!date || !creativeId) continue;
+        const m = creativeRow.metrics;
+        await db
+          .insert(creativeMetricsTable)
+          .values({
+            userId,
+            creativeId,
+            date,
+            spend: String(Number(m.costMicros ?? 0) / 1_000_000),
+            impressions: Number(m.impressions ?? 0),
+            clicks: Number(m.clicks ?? 0),
+            conversions: Math.round(Number(m.conversions ?? 0)),
+            revenue: String(Number(m.conversionsValue ?? 0)),
+          })
+          .onConflictDoUpdate({
+            target: [creativeMetricsTable.creativeId, creativeMetricsTable.date],
+            set: {
+              spend: String(Number(m.costMicros ?? 0) / 1_000_000),
+              impressions: Number(m.impressions ?? 0),
+              clicks: Number(m.clicks ?? 0),
+              conversions: Math.round(Number(m.conversions ?? 0)),
+              revenue: String(Number(m.conversionsValue ?? 0)),
+            },
+          });
+      }
 
       // ── Daily metrics for this campaign (last 90 days) ────────────────────
       const metricRows = await withRetry("google_ads:metrics", () =>

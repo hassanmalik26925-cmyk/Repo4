@@ -3,6 +3,10 @@ import {
   db,
   adCampaignsTable,
   adMetricsTable,
+  adSetsTable,
+  adSetMetricsTable,
+  adCreativesTable,
+  creativeMetricsTable,
   ordersTable,
 } from "@workspace/db";
 import type { DateWindow } from "../lib/dateRange";
@@ -26,6 +30,21 @@ export interface ChannelRow {
   channel: string;
   spend: number;
   revenue: number;
+}
+
+export interface PerformanceHighlight {
+  id: string;
+  name: string;
+  channel: string;
+  parentName?: string;
+  spend: number;
+  revenue: number;
+  conversions: number;
+  clicks: number;
+  impressions: number;
+  cpa: number;
+  roas: number;
+  ctr: number;
 }
 
 export class MarketingService {
@@ -167,6 +186,101 @@ export class MarketingService {
       spend: Number(r.spend),
       revenue: Number(r.revenue),
     }));
+  }
+
+  static async performanceHighlights(
+    userId: string,
+    win: DateWindow,
+  ): Promise<{ adSets: PerformanceHighlight[]; creatives: PerformanceHighlight[] }> {
+    const fromKey = win.from.toISOString().slice(0, 10);
+    const toKey = win.to.toISOString().slice(0, 10);
+
+    const [adSetRows, creativeRows] = await Promise.all([
+      db
+        .select({
+          id: adSetsTable.id,
+          name: adSetsTable.name,
+          channel: adSetsTable.channel,
+          parentName: adCampaignsTable.name,
+          spend: sql<string>`COALESCE(SUM(${adSetMetricsTable.spend}), 0)`,
+          revenue: sql<string>`COALESCE(SUM(${adSetMetricsTable.revenue}), 0)`,
+          conversions: sql<string>`COALESCE(SUM(${adSetMetricsTable.conversions}), 0)`,
+          clicks: sql<string>`COALESCE(SUM(${adSetMetricsTable.clicks}), 0)`,
+          impressions: sql<string>`COALESCE(SUM(${adSetMetricsTable.impressions}), 0)`,
+        })
+        .from(adSetsTable)
+        .innerJoin(adCampaignsTable, eq(adSetsTable.campaignId, adCampaignsTable.id))
+        .leftJoin(
+          adSetMetricsTable,
+          and(
+            eq(adSetMetricsTable.adSetId, adSetsTable.id),
+            sql`${adSetMetricsTable.date} >= ${fromKey}`,
+            sql`${adSetMetricsTable.date} <= ${toKey}`,
+          ),
+        )
+        .where(eq(adSetsTable.userId, userId))
+        .groupBy(adSetsTable.id, adSetsTable.name, adSetsTable.channel, adCampaignsTable.name),
+      db
+        .select({
+          id: adCreativesTable.id,
+          name: adCreativesTable.name,
+          channel: adCreativesTable.channel,
+          parentName: adSetsTable.name,
+          spend: sql<string>`COALESCE(SUM(${creativeMetricsTable.spend}), 0)`,
+          revenue: sql<string>`COALESCE(SUM(${creativeMetricsTable.revenue}), 0)`,
+          conversions: sql<string>`COALESCE(SUM(${creativeMetricsTable.conversions}), 0)`,
+          clicks: sql<string>`COALESCE(SUM(${creativeMetricsTable.clicks}), 0)`,
+          impressions: sql<string>`COALESCE(SUM(${creativeMetricsTable.impressions}), 0)`,
+        })
+        .from(adCreativesTable)
+        .innerJoin(adSetsTable, eq(adCreativesTable.adSetId, adSetsTable.id))
+        .leftJoin(
+          creativeMetricsTable,
+          and(
+            eq(creativeMetricsTable.creativeId, adCreativesTable.id),
+            sql`${creativeMetricsTable.date} >= ${fromKey}`,
+            sql`${creativeMetricsTable.date} <= ${toKey}`,
+          ),
+        )
+        .where(eq(adCreativesTable.userId, userId))
+        .groupBy(adCreativesTable.id, adCreativesTable.name, adCreativesTable.channel, adSetsTable.name),
+    ]);
+
+    const mapRows = (rows: typeof adSetRows): PerformanceHighlight[] =>
+      rows
+        .map((row) => {
+          const spend = Number(row.spend);
+          const revenue = Number(row.revenue);
+          const conversions = Number(row.conversions);
+          const clicks = Number(row.clicks);
+          const impressions = Number(row.impressions);
+          return {
+            id: row.id,
+            name: row.name,
+            channel: row.channel,
+            parentName: row.parentName,
+            spend,
+            revenue,
+            conversions,
+            clicks,
+            impressions,
+            cpa: conversions > 0 ? spend / conversions : 0,
+            roas: spend > 0 ? revenue / spend : 0,
+            ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+          };
+        })
+        .filter((row) => row.spend > 0 || row.revenue > 0)
+        .sort((a, b) => {
+          const aQualified = a.spend >= 50 ? 1 : 0;
+          const bQualified = b.spend >= 50 ? 1 : 0;
+          return bQualified - aQualified || b.roas - a.roas || b.revenue - a.revenue;
+        })
+        .slice(0, 5);
+
+    return {
+      adSets: mapRows(adSetRows),
+      creatives: mapRows(creativeRows),
+    };
   }
 }
 

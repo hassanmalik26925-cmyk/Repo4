@@ -5,7 +5,7 @@ import {
 import {
   CircleDollarSign, ShoppingCart, CreditCard, Target, Gauge, Zap,
   TrendingUp, Brain, AlertTriangle, CheckCircle2, Info, XCircle,
-  ChevronRight, ChevronDown, Users, Store, MousePointer2,
+  ChevronRight, ChevronDown, Users, Store, MousePointer2, Trophy, Palette, Repeat2,
 } from "lucide-react";
 import {
   useGetDashboardOverview, useGetRevenueTrend,
@@ -172,6 +172,45 @@ function InsightSkeleton() {
   );
 }
 
+function HighlightRow({
+  name,
+  subtitle,
+  metrics,
+  tone = "violet",
+}: {
+  name: string;
+  subtitle: string;
+  metrics: Array<{ label: string; value: string }>;
+  tone?: "violet" | "pink" | "amber";
+}) {
+  const tones = {
+    violet: "bg-violet-500/10 text-violet-500",
+    pink: "bg-pink-500/10 text-pink-500",
+    amber: "bg-amber-500/10 text-amber-500",
+  };
+  return (
+    <div className="rounded-xl border border-[hsl(var(--card-border))] bg-muted/20 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold">{name}</div>
+          <div className="mt-0.5 truncate text-[10px] text-muted-foreground">{subtitle}</div>
+        </div>
+        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${tones[tone]}`}>
+          {metrics[0]?.value ?? "—"}
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {metrics.slice(1).map((metric) => (
+          <div key={metric.label}>
+            <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{metric.label}</div>
+            <div className="mt-0.5 text-xs font-semibold">{metric.value}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage({ onNavigate, hasConnected = true, onGoToSettings }: { onNavigate: (screen: Screen) => void; hasConnected?: boolean; onGoToSettings?: () => void }) {
   const { range } = useDateRange();
   const { format: fmt } = useCurrency();
@@ -185,8 +224,11 @@ export function DashboardPage({ onNavigate, hasConnected = true, onGoToSettings 
   const data = overview.data;
   const sub = RANGE_LABELS[range];
   const trendPoints = (trend.data ?? []).map((p) => ({ label: formatDateShort(p.date), revenue: p.revenue }));
-  const insightList = (insights.data as any)?.insights ?? [];
   const summaryData = summary.data;
+  const insightList = [
+    ...((insights.data as any)?.insights ?? []),
+    ...(summaryData?.highlights?.suggestions ?? []),
+  ].filter((insight, index, all) => all.findIndex((item) => item.id === insight.id) === index);
   const delta = (value: number) => formatDelta(value);
 
   return (
@@ -439,6 +481,107 @@ export function DashboardPage({ onNavigate, hasConnected = true, onGoToSettings 
             </Card>
           </AnimatedCard>
         </div>
+
+        {/* Performance highlights */}
+        <AnimatedCard delay={0.68}>
+          <Card className="p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                  <Trophy className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">Performance highlights</div>
+                  <div className="text-[10px] text-muted-foreground">Top performers for {sub.toLowerCase()}</div>
+                </div>
+              </div>
+              <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+                Ranked by ROAS with spend context
+              </span>
+            </div>
+            {summaryData ? (
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    <Target className="h-3.5 w-3.5 text-violet-500" /> Top ad sets
+                  </div>
+                  {(summaryData.highlights.adSets ?? []).slice(0, 3).map((item) => (
+                    <HighlightRow
+                      key={item.id}
+                      name={item.name}
+                      subtitle={`${item.channel} · ${item.parentName ?? "Campaign"}`}
+                      tone="violet"
+                      metrics={[
+                        { label: "ROAS", value: `${item.roas.toFixed(2)}x` },
+                        { label: "Spend", value: fmt(item.spend) },
+                        { label: "Revenue", value: fmt(item.revenue) },
+                        { label: "Conversions", value: formatNumber(item.conversions) },
+                      ]}
+                    />
+                  ))}
+                  {(summaryData.highlights.adSets ?? []).length === 0 && (
+                    <div className="rounded-xl border border-dashed border-[hsl(var(--card-border))] p-4 text-center text-xs text-muted-foreground">
+                      Ad-set data will appear after the ad platform sync exposes it.
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    <Palette className="h-3.5 w-3.5 text-pink-500" /> Top creatives
+                  </div>
+                  {(summaryData.highlights.creatives ?? []).slice(0, 3).map((item) => (
+                    <HighlightRow
+                      key={item.id}
+                      name={item.name}
+                      subtitle={`${item.channel} · ${item.parentName ?? "Ad set"}`}
+                      tone="pink"
+                      metrics={[
+                        { label: "ROAS", value: `${item.roas.toFixed(2)}x` },
+                        { label: "CTR", value: `${item.ctr.toFixed(2)}%` },
+                        { label: "Spend", value: fmt(item.spend) },
+                        { label: "Conversions", value: formatNumber(item.conversions) },
+                      ]}
+                    />
+                  ))}
+                  {(summaryData.highlights.creatives ?? []).length === 0 && (
+                    <div className="rounded-xl border border-dashed border-[hsl(var(--card-border))] p-4 text-center text-xs text-muted-foreground">
+                      Creative performance will appear after creative-level sync data is available.
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    <Repeat2 className="h-3.5 w-3.5 text-amber-500" /> Repeat customers
+                  </div>
+                  {(summaryData.highlights.repeatCustomers ?? []).slice(0, 3).map((customer) => (
+                    <HighlightRow
+                      key={customer.id}
+                      name={customer.name}
+                      subtitle={customer.email}
+                      tone="amber"
+                      metrics={[
+                        { label: "Orders", value: formatNumber(customer.ordersCount) },
+                        { label: "Spent", value: fmt(customer.totalSpent) },
+                        { label: "Avg order", value: fmt(customer.averageOrderValue) },
+                      ]}
+                    />
+                  ))}
+                  {(summaryData.highlights.repeatCustomers ?? []).length === 0 && (
+                    <div className="rounded-xl border border-dashed border-[hsl(var(--card-border))] p-4 text-center text-xs text-muted-foreground">
+                      Repeat-purchase highlights will appear once customers place multiple orders.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-3 lg:grid-cols-3">
+                <InsightSkeleton />
+                <InsightSkeleton />
+                <InsightSkeleton />
+              </div>
+            )}
+          </Card>
+        </AnimatedCard>
 
         {/* Activity feed */}
         <AnimatedCard delay={0.6}>

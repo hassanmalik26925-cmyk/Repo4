@@ -127,6 +127,44 @@ export class CustomerService {
     };
   }
 
+  static async repeatCustomers(userId: string, win: DateWindow) {
+    const rows = await db
+      .select({
+        id: customersTable.id,
+        name: customersTable.name,
+        email: customersTable.email,
+        ordersCount: sql<string>`COUNT(${ordersTable.id})`,
+        totalSpent: sql<string>`COALESCE(SUM(${ordersTable.totalAmount}), 0)`,
+      })
+      .from(customersTable)
+      .leftJoin(
+        ordersTable,
+        and(
+          eq(ordersTable.customerId, customersTable.id),
+          gte(ordersTable.orderedAt, win.from),
+          lte(ordersTable.orderedAt, win.to),
+        ),
+      )
+      .where(eq(customersTable.userId, userId))
+      .groupBy(customersTable.id, customersTable.name, customersTable.email)
+      .having(sql`COUNT(${ordersTable.id}) > 1`)
+      .orderBy(desc(sql`COUNT(${ordersTable.id})`), desc(sql`SUM(${ordersTable.totalAmount})`))
+      .limit(5);
+
+    return rows.map((row) => {
+      const ordersCount = Number(row.ordersCount);
+      const totalSpent = Number(row.totalSpent);
+      return {
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        ordersCount,
+        totalSpent,
+        averageOrderValue: ordersCount > 0 ? totalSpent / ordersCount : 0,
+      };
+    });
+  }
+
   /**
    * Recompute denormalized totals (totalSpent, ordersCount) for a customer.
    * Called atomically after order create/update.

@@ -1341,7 +1341,7 @@ components:
 
     InsightsSummary:
       type: object
-      required: [customer, store, traffic]
+      required: [customer, store, traffic, highlights]
       properties:
         customer:
           type: object
@@ -1373,6 +1373,54 @@ components:
             clicks: { $ref: "#/components/schemas/Metric" }
             ctr: { $ref: "#/components/schemas/Metric" }
             conversions: { $ref: "#/components/schemas/Metric" }
+        highlights:
+          type: object
+          required: [adSets, creatives, repeatCustomers, suggestions]
+          properties:
+            adSets:
+              type: array
+              items:
+                $ref: "#/components/schemas/PerformanceHighlight"
+            creatives:
+              type: array
+              items:
+                $ref: "#/components/schemas/PerformanceHighlight"
+            repeatCustomers:
+              type: array
+              items:
+                $ref: "#/components/schemas/RepeatCustomerHighlight"
+            suggestions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Insight"
+
+    PerformanceHighlight:
+      type: object
+      required: [id, name, channel, spend, revenue, conversions, clicks, impressions, cpa, roas, ctr]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        channel: { type: string }
+        parentName: { type: string }
+        spend: { type: number }
+        revenue: { type: number }
+        conversions: { type: integer }
+        clicks: { type: integer }
+        impressions: { type: integer }
+        cpa: { type: number }
+        roas: { type: number }
+        ctr: { type: number }
+
+    RepeatCustomerHighlight:
+      type: object
+      required: [id, name, email, ordersCount, totalSpent, averageOrderValue]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        ordersCount: { type: integer }
+        totalSpent: { type: number }
+        averageOrderValue: { type: number }
 
     IntegrationsHealth:
       type: object
