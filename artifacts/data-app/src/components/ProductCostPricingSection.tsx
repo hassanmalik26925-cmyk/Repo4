@@ -12,16 +12,20 @@ import { useDateRange } from "../contexts/DateRangeContext";
 
 interface Props {
   onToast: (msg: string) => void;
+  hasConnected?: boolean;
 }
 
 // Advanced, bulk-friendly editor for the real cost (COGS) and selling price
 // of every product — separate from the quick add/edit form on the Products
 // page. Supports per-row edits plus a bulk markup pass across a filtered set.
-export function ProductCostPricingSection({ onToast }: Props) {
+export function ProductCostPricingSection({ onToast, hasConnected = true }: Props) {
   const { currency } = useCurrency();
   const { range } = useDateRange();
   const queryClient = useQueryClient();
-  const products = useListProducts({ range });
+  const products = useListProducts(
+    { range },
+    { query: { enabled: hasConnected, queryKey: ["settings", "product-costs", range] } },
+  );
   const [search, setSearch] = useState("");
   const [drafts, setDrafts] = useState<Record<string, { price: string; cogs: string }>>({});
   const [bulkMarkup, setBulkMarkup] = useState("");

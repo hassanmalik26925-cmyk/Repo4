@@ -652,6 +652,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/InsightsResponse"
 
+  /insights/summary:
+    get:
+      operationId: getInsightsSummary
+      tags: [insights]
+      summary: Customer, store, and traffic insights
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RangeParam"
+      responses:
+        "200":
+          description: Live customer, store, and traffic insights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsightsSummary"
+
   /activities:
     get:
       operationId: listActivities
@@ -1321,6 +1338,41 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Insight"
+
+    InsightsSummary:
+      type: object
+      required: [customer, store, traffic]
+      properties:
+        customer:
+          type: object
+          required: [totalCustomers, newCustomers, repeatRate, averageLifetimeValue]
+          properties:
+            totalCustomers: { type: integer }
+            newCustomers: { $ref: "#/components/schemas/Metric" }
+            repeatRate: { $ref: "#/components/schemas/Metric" }
+            averageLifetimeValue: { $ref: "#/components/schemas/Metric" }
+            topCustomer:
+              type: ["object", "null"]
+              required: [name, value]
+              properties:
+                name: { type: string }
+                value: { type: number }
+        store:
+          type: object
+          required: [revenue, orders, averageOrderValue, margin]
+          properties:
+            revenue: { $ref: "#/components/schemas/Metric" }
+            orders: { $ref: "#/components/schemas/Metric" }
+            averageOrderValue: { $ref: "#/components/schemas/Metric" }
+            margin: { type: number }
+        traffic:
+          type: object
+          required: [impressions, clicks, ctr, conversions]
+          properties:
+            impressions: { $ref: "#/components/schemas/Metric" }
+            clicks: { $ref: "#/components/schemas/Metric" }
+            ctr: { $ref: "#/components/schemas/Metric" }
+            conversions: { $ref: "#/components/schemas/Metric" }
 
     IntegrationsHealth:
       type: object

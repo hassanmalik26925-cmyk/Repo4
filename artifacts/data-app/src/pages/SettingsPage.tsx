@@ -250,7 +250,14 @@ export function SettingsPage() {
   const settings = useGetSettings();
   const update = useUpdateSettings();
   const integrations = useListIntegrations();
-  const overview = useGetDashboardOverview({ range });
+  const hasConnected =
+    !!user?.isDemo ||
+    (!integrations.isLoading &&
+      (integrations.data ?? []).some((i) => i.status === "connected"));
+  const overview = useGetDashboardOverview(
+    { range },
+    { query: { enabled: hasConnected, queryKey: ["settings", "overview", range] } },
+  );
   const productsForReport = useListProducts(
     { range },
     { query: { enabled: false, queryKey: ["report", "products", range] } },
@@ -592,7 +599,7 @@ ${
 
       {/* ── Product cost & pricing ────────────────────────────────── */}
       <SectionLabel label="Product Cost & Pricing" />
-      <ProductCostPricingSection onToast={toast} />
+      <ProductCostPricingSection onToast={toast} hasConnected={hasConnected} />
 
       {/* ── Reporting ──────────────────────────────────────────────── */}
       <SectionLabel label="Reporting" />

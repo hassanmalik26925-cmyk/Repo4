@@ -73,8 +73,8 @@ function AuthenticatedApp() {
   // integration is currently marked connected/disconnected in Settings.
   const hasConnected =
     !!user?.isDemo ||
-    integrations.isLoading ||
-    (integrations.data ?? []).some((i) => i.status === "connected");
+    (!integrations.isLoading &&
+      (integrations.data ?? []).some((i) => i.status === "connected"));
 
   const dataScreen = (
     <AnimatePresence mode="wait">

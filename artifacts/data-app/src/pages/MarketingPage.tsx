@@ -37,8 +37,8 @@ export function MarketingPage({ hasConnected = true, onGoToSettings }: Marketing
   const { range } = useDateRange();
   const { format: fmt, formatCompact } = useCurrency();
   const [sort, setSort] = useState<SortKey>("roas");
-  const summary = useGetMarketingSummary({ range });
-  const campaigns = useListCampaigns({ range });
+  const summary = useGetMarketingSummary({ range }, { query: { enabled: hasConnected, queryKey: ["marketing", "summary", range] } });
+  const campaigns = useListCampaigns({ range }, { query: { enabled: hasConnected, queryKey: ["marketing", "campaigns", range] } });
   const s = summary.data;
 
   const sorted = [...(campaigns.data ?? [])].sort((a, b) => {

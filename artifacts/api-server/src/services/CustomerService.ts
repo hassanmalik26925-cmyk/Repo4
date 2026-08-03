@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db, customersTable, ordersTable } from "@workspace/db";
 import type { DateWindow } from "../lib/dateRange";
 import { REVENUE_STATUSES } from "./RevenueService";
@@ -43,6 +43,88 @@ export class CustomerService {
         ),
       );
     return Number(row?.c ?? 0);
+  }
+
+  static async insightsSummary(userId: string, win: DateWindow) {
+    const currentFrom = win.from.toISOString();
+    const currentTo = win.to.toISOString();
+    const previousFrom = win.prevFrom.toISOString();
+    const previousTo = win.prevTo.toISOString();
+
+    const [totals, currentNew, previousNew, topCustomer] = await Promise.all([
+      db
+        .select({
+          total: sql<string>`COUNT(*)`,
+          repeat: sql<string>`COUNT(*) FILTER (WHERE ${customersTable.ordersCount} > 1)`,
+          lifetimeValue: sql<string>`COALESCE(AVG(${customersTable.totalSpent}), 0)`,
+        })
+        .from(customersTable)
+        .where(eq(customersTable.userId, userId)),
+      db
+        .select({
+          count: sql<string>`COUNT(*)`,
+          lifetimeValue: sql<string>`COALESCE(AVG(${customersTable.totalSpent}), 0)`,
+        })
+        .from(customersTable)
+        .where(
+          and(
+            eq(customersTable.userId, userId),
+            gte(customersTable.createdAt, new Date(currentFrom)),
+            lte(customersTable.createdAt, new Date(currentTo)),
+          ),
+        ),
+      db
+        .select({
+          count: sql<string>`COUNT(*)`,
+          lifetimeValue: sql<string>`COALESCE(AVG(${customersTable.totalSpent}), 0)`,
+        })
+        .from(customersTable)
+        .where(
+          and(
+            eq(customersTable.userId, userId),
+            gte(customersTable.createdAt, new Date(previousFrom)),
+            lte(customersTable.createdAt, new Date(previousTo)),
+          ),
+        ),
+      db
+        .select({
+          name: customersTable.name,
+          value: customersTable.totalSpent,
+        })
+        .from(customersTable)
+        .where(eq(customersTable.userId, userId))
+        .orderBy(desc(customersTable.totalSpent))
+        .limit(1),
+    ]);
+
+    const totalCustomers = Number(totals[0]?.total ?? 0);
+    const repeatRate = totalCustomers > 0
+      ? (Number(totals[0]?.repeat ?? 0) / totalCustomers) * 100
+      : 0;
+    const currentNewCount = Number(currentNew[0]?.count ?? 0);
+    const previousNewCount = Number(previousNew[0]?.count ?? 0);
+    const currentLtv = Number(currentNew[0]?.lifetimeValue ?? totals[0]?.lifetimeValue ?? 0);
+    const previousLtv = Number(previousNew[0]?.lifetimeValue ?? 0);
+
+    return {
+      totalCustomers,
+      newCustomers: {
+        value: currentNewCount,
+        deltaPct: previousNewCount === 0
+          ? (currentNewCount === 0 ? 0 : 100)
+          : ((currentNewCount - previousNewCount) / previousNewCount) * 100,
+      },
+      repeatRate: { value: repeatRate, deltaPct: 0 },
+      averageLifetimeValue: {
+        value: Number(totals[0]?.lifetimeValue ?? 0),
+        deltaPct: previousLtv === 0
+          ? (currentLtv === 0 ? 0 : 100)
+          : ((currentLtv - previousLtv) / previousLtv) * 100,
+      },
+      topCustomer: topCustomer[0]
+        ? { name: topCustomer[0].name, value: Number(topCustomer[0].value) }
+        : null,
+    };
   }
 
   /**

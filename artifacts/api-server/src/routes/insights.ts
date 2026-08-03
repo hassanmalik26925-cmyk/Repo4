@@ -8,10 +8,12 @@
 import { Router, type IRouter } from "express";
 import { requireAuth } from "../middlewares/requireAuth";
 import { RevenueService } from "../services/RevenueService";
+import { CustomerService } from "../services/CustomerService";
+import { MarketingService } from "../services/MarketingService";
 import { dateWindow, parseRange } from "../lib/dateRange";
 import { db, adCampaignsTable, adMetricsTable, ordersTable, productsTable } from "@workspace/db";
 import { eq, and, gte, lte, sum, sql } from "drizzle-orm";
-import { GetInsightsResponse } from "@workspace/api-zod";
+import { GetInsightsResponse, GetInsightsSummaryResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 router.use(requireAuth);
@@ -322,6 +324,73 @@ router.get("/insights", async (req, res): Promise<void> => {
   } catch (err) {
     res.status(500).json({ error: "Insights engine failed" });
   }
+});
+
+router.get("/insights/summary", async (req, res): Promise<void> => {
+  const userId = req.user!.sub;
+  const range = parseRange(req.query.range);
+  const win = dateWindow(range);
+  const previous = {
+    ...win,
+    from: win.prevFrom,
+    to: win.prevTo,
+  };
+
+  const [customer, currentStore, previousStore, currentTraffic, previousTraffic] =
+    await Promise.all([
+      CustomerService.insightsSummary(userId, win),
+      Promise.all([
+        RevenueService.getTotalRevenue(userId, win),
+        RevenueService.getOrdersCount(userId, win),
+      ]),
+      Promise.all([
+        RevenueService.getTotalRevenue(userId, previous),
+        RevenueService.getOrdersCount(userId, previous),
+      ]),
+      MarketingService.summary(userId, win),
+      MarketingService.summary(userId, previous),
+    ]);
+
+  const [revenue, orders] = currentStore;
+  const [previousRevenue, previousOrders] = previousStore;
+  const averageOrderValue = orders > 0 ? revenue / orders : 0;
+  const previousAverageOrderValue = previousOrders > 0 ? previousRevenue / previousOrders : 0;
+  const margin = revenue > 0
+    ? ((revenue - currentTraffic.adSpend) / revenue) * 100
+    : 0;
+
+  res.json(
+    GetInsightsSummaryResponse.parse({
+      customer,
+      store: {
+        revenue: { value: revenue, deltaPct: pct(revenue, previousRevenue) },
+        orders: { value: orders, deltaPct: pct(orders, previousOrders) },
+        averageOrderValue: {
+          value: averageOrderValue,
+          deltaPct: pct(averageOrderValue, previousAverageOrderValue),
+        },
+        margin,
+      },
+      traffic: {
+        impressions: {
+          value: currentTraffic.impressions,
+          deltaPct: pct(currentTraffic.impressions, previousTraffic.impressions),
+        },
+        clicks: {
+          value: currentTraffic.clicks,
+          deltaPct: pct(currentTraffic.clicks, previousTraffic.clicks),
+        },
+        ctr: {
+          value: currentTraffic.ctr,
+          deltaPct: pct(currentTraffic.ctr, previousTraffic.ctr),
+        },
+        conversions: {
+          value: currentTraffic.conversions,
+          deltaPct: pct(currentTraffic.conversions, previousTraffic.conversions),
+        },
+      },
+    }),
+  );
 });
 
 export default router;

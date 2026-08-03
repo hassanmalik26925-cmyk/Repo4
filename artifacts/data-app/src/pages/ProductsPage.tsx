@@ -231,7 +231,7 @@ export function ProductsPage({ hasConnected = true, onGoToSettings }: ProductsPa
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const list = useListProducts({ range });
+  const list = useListProducts({ range }, { query: { enabled: hasConnected, queryKey: ["products", range] } });
   const items = list.data ?? [];
 
   const deleteProduct = useDeleteProduct({

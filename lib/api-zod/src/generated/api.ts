@@ -576,6 +576,74 @@ export const GetInsightsResponse = zod.object({
   ),
 });
 
+/**
+ * @summary Customer, store, and traffic insights
+ */
+export const getInsightsSummaryQueryRangeDefault = `30d`;
+
+export const GetInsightsSummaryQueryParams = zod.object({
+  range: zod
+    .enum(["7d", "14d", "30d", "90d"])
+    .default(getInsightsSummaryQueryRangeDefault),
+});
+
+export const GetInsightsSummaryResponse = zod.object({
+  customer: zod.object({
+    totalCustomers: zod.number(),
+    newCustomers: zod.object({
+      value: zod.number(),
+      deltaPct: zod.number(),
+    }),
+    repeatRate: zod.object({
+      value: zod.number(),
+      deltaPct: zod.number(),
+    }),
+    averageLifetimeValue: zod.object({
+      value: zod.number(),
+      deltaPct: zod.number(),
+    }),
+    topCustomer: zod
+      .object({
+        name: zod.string(),
+        value: zod.number(),
+      })
+      .nullish(),
+  }),
+  store: zod.object({
+    revenue: zod.object({
+      value: zod.number(),
+      deltaPct: zod.number(),
+    }),
+    orders: zod.object({
+      value: zod.number(),
+      deltaPct: zod.number(),
+    }),
+    averageOrderValue: zod.object({
+      value: zod.number(),
+      deltaPct: zod.number(),
+    }),
+    margin: zod.number(),
+  }),
+  traffic: zod.object({
+    impressions: zod.object({
+      value: zod.number(),
+      deltaPct: zod.number(),
+    }),
+    clicks: zod.object({
+      value: zod.number(),
+      deltaPct: zod.number(),
+    }),
+    ctr: zod.object({
+      value: zod.number(),
+      deltaPct: zod.number(),
+    }),
+    conversions: zod.object({
+      value: zod.number(),
+      deltaPct: zod.number(),
+    }),
+  }),
+});
+
 export const listActivitiesQueryLimitDefault = 20;
 
 export const ListActivitiesQueryParams = zod.object({

@@ -53,7 +53,11 @@ router.post(
       return;
     }
 
-    await seedDemoData(user.id);
+    // Only the designated demo account receives seeded analytics data.
+    // Real accounts must begin empty and populate from a connected integration.
+    if (user.isDemo === "true") {
+      await seedDemoData(user.id);
+    }
 
     const { token, expiresAt } = signToken({
       sub: user.id,

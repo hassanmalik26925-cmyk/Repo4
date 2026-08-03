@@ -35,12 +35,14 @@ import type {
   ForgotPasswordBody,
   GetDashboardOverviewParams,
   GetInsightsParams,
+  GetInsightsSummaryParams,
   GetMarketingByChannelParams,
   GetMarketingSummaryParams,
   GetRevenueByPlatformParams,
   GetRevenueTrendParams,
   HealthStatus,
   InsightsResponse,
+  InsightsSummary,
   Integration,
   IntegrationsHealth,
   ListActivitiesParams,
@@ -2653,6 +2655,103 @@ export function useGetInsights<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetInsightsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Customer, store, and traffic insights
+ */
+export const getGetInsightsSummaryUrl = (params?: GetInsightsSummaryParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/insights/summary?${stringifiedParams}`
+    : `/api/insights/summary`;
+};
+
+export const getInsightsSummary = async (
+  params?: GetInsightsSummaryParams,
+  options?: RequestInit,
+): Promise<InsightsSummary> => {
+  return customFetch<InsightsSummary>(getGetInsightsSummaryUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetInsightsSummaryQueryKey = (
+  params?: GetInsightsSummaryParams,
+) => {
+  return [`/api/insights/summary`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetInsightsSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInsightsSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetInsightsSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getInsightsSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetInsightsSummaryQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getInsightsSummary>>
+  > = ({ signal }) => getInsightsSummary(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInsightsSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetInsightsSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInsightsSummary>>
+>;
+export type GetInsightsSummaryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Customer, store, and traffic insights
+ */
+
+export function useGetInsightsSummary<
+  TData = Awaited<ReturnType<typeof getInsightsSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetInsightsSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getInsightsSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetInsightsSummaryQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

@@ -49,7 +49,7 @@ export function OrdersPage({ hasConnected = true, onGoToSettings }: OrdersPagePr
     range, status: status === "all" ? undefined : (status as any),
     platform: platform === "all" ? undefined : (platform as any),
     search: search || undefined,
-  });
+  }, { query: { enabled: hasConnected, queryKey: ["orders", range, status, platform, search] } });
   const orders = list.data?.orders ?? [];
   const summary = list.data?.summary;
 

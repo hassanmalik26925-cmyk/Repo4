@@ -312,6 +312,43 @@ export interface InsightsResponse {
   insights: Insight[];
 }
 
+/**
+ * @nullable
+ */
+export type InsightsSummaryCustomerTopCustomer = {
+  name: string;
+  value: number;
+} | null;
+
+export type InsightsSummaryCustomer = {
+  totalCustomers: number;
+  newCustomers: Metric;
+  repeatRate: Metric;
+  averageLifetimeValue: Metric;
+  /** @nullable */
+  topCustomer?: InsightsSummaryCustomerTopCustomer;
+};
+
+export type InsightsSummaryStore = {
+  revenue: Metric;
+  orders: Metric;
+  averageOrderValue: Metric;
+  margin: number;
+};
+
+export type InsightsSummaryTraffic = {
+  impressions: Metric;
+  clicks: Metric;
+  ctr: Metric;
+  conversions: Metric;
+};
+
+export interface InsightsSummary {
+  customer: InsightsSummaryCustomer;
+  store: InsightsSummaryStore;
+  traffic: InsightsSummaryTraffic;
+}
+
 export type IntegrationsHealthIntegrationsItem = {
   platform: string;
   status: string;
@@ -480,6 +517,10 @@ export type GetMarketingByChannelParams = {
 };
 
 export type GetInsightsParams = {
+  range?: RangeParamParameter;
+};
+
+export type GetInsightsSummaryParams = {
   range?: RangeParamParameter;
 };
 

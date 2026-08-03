@@ -5,11 +5,11 @@ import {
 import {
   CircleDollarSign, ShoppingCart, CreditCard, Target, Gauge, Zap,
   TrendingUp, Brain, AlertTriangle, CheckCircle2, Info, XCircle,
-  ChevronRight, ChevronDown,
+  ChevronRight, ChevronDown, Users, Store, MousePointer2,
 } from "lucide-react";
 import {
   useGetDashboardOverview, useGetRevenueTrend,
-  useGetRevenueByPlatform, useListActivities, useGetInsights,
+  useGetRevenueByPlatform, useListActivities, useGetInsights, useGetInsightsSummary,
 } from "@workspace/api-client-react";
 import { useDateRange, RANGE_LABELS } from "../contexts/DateRangeContext";
 import {
@@ -137,19 +137,57 @@ function InsightCard({ insight, onNavigate }: { insight: InsightItem; onNavigate
   );
 }
 
+function InsightMetric({
+  label,
+  value,
+  change,
+}: {
+  label: string;
+  value: string;
+  change?: { label: string; positive: boolean };
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-bold">{value}</span>
+        {change && (
+          <span className={`text-[10px] font-semibold ${change.positive ? "text-emerald-500" : "text-red-500"}`}>
+            {change.label}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InsightSkeleton() {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-4 rounded-lg" />
+      <Skeleton className="h-4 rounded-lg" />
+      <Skeleton className="h-4 rounded-lg" />
+      <Skeleton className="h-4 rounded-lg" />
+    </div>
+  );
+}
+
 export function DashboardPage({ onNavigate, hasConnected = true, onGoToSettings }: { onNavigate: (screen: Screen) => void; hasConnected?: boolean; onGoToSettings?: () => void }) {
   const { range } = useDateRange();
   const { format: fmt } = useCurrency();
-  const overview = useGetDashboardOverview({ range });
-  const trend = useGetRevenueTrend({ range });
-  const byPlatform = useGetRevenueByPlatform({ range });
-  const activities = useListActivities({ limit: 8 });
-  const insights = useGetInsights({ range });
+  const overview = useGetDashboardOverview({ range }, { query: { enabled: hasConnected, queryKey: ["dashboard", "overview", range] } });
+  const trend = useGetRevenueTrend({ range }, { query: { enabled: hasConnected, queryKey: ["dashboard", "trend", range] } });
+  const byPlatform = useGetRevenueByPlatform({ range }, { query: { enabled: hasConnected, queryKey: ["dashboard", "platform", range] } });
+  const activities = useListActivities({ limit: 8 }, { query: { enabled: hasConnected, queryKey: ["dashboard", "activities", 8] } });
+  const insights = useGetInsights({ range }, { query: { enabled: hasConnected, queryKey: ["dashboard", "insights", range] } });
+  const summary = useGetInsightsSummary({ range }, { query: { enabled: hasConnected, queryKey: ["dashboard", "insight-summary", range] } });
 
   const data = overview.data;
   const sub = RANGE_LABELS[range];
   const trendPoints = (trend.data ?? []).map((p) => ({ label: formatDateShort(p.date), revenue: p.revenue }));
   const insightList = (insights.data as any)?.insights ?? [];
+  const summaryData = summary.data;
+  const delta = (value: number) => formatDelta(value);
 
   return (
     <AnimatedPage>
@@ -322,6 +360,82 @@ export function DashboardPage({ onNavigate, hasConnected = true, onGoToSettings 
                   <div className="text-[10px] text-muted-foreground">Connect more integrations to get insights</div>
                 </div>
               )}
+            </Card>
+          </AnimatedCard>
+        </div>
+
+        {/* Customer, store, and traffic intelligence */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          <AnimatedCard delay={0.55}>
+            <Card className="h-full p-4">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500">
+                  <Users className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">Customer insights</div>
+                  <div className="text-[10px] text-muted-foreground">Who is driving growth</div>
+                </div>
+              </div>
+              {summaryData ? (
+                <div className="space-y-3">
+                  <InsightMetric label="Total customers" value={formatNumber(summaryData.customer.totalCustomers)} />
+                  <InsightMetric label="New customers" value={formatNumber(summaryData.customer.newCustomers.value)} change={delta(summaryData.customer.newCustomers.deltaPct)} />
+                  <InsightMetric label="Repeat rate" value={`${summaryData.customer.repeatRate.value.toFixed(1)}%`} />
+                  <InsightMetric label="Avg. lifetime value" value={fmt(summaryData.customer.averageLifetimeValue.value)} change={delta(summaryData.customer.averageLifetimeValue.deltaPct)} />
+                  {summaryData.customer.topCustomer && (
+                    <div className="rounded-xl bg-muted/40 px-3 py-2 text-xs">
+                      <span className="text-muted-foreground">Top customer </span>
+                      <span className="font-semibold">{summaryData.customer.topCustomer.name}</span>
+                      <span className="ml-1 text-emerald-500">{fmt(summaryData.customer.topCustomer.value)}</span>
+                    </div>
+                  )}
+                </div>
+              ) : <InsightSkeleton />}
+            </Card>
+          </AnimatedCard>
+
+          <AnimatedCard delay={0.6}>
+            <Card className="h-full p-4">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                  <Store className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">Store insights</div>
+                  <div className="text-[10px] text-muted-foreground">Compared with previous period</div>
+                </div>
+              </div>
+              {summaryData ? (
+                <div className="space-y-3">
+                  <InsightMetric label="Revenue" value={fmt(summaryData.store.revenue.value)} change={delta(summaryData.store.revenue.deltaPct)} />
+                  <InsightMetric label="Orders" value={formatNumber(summaryData.store.orders.value)} change={delta(summaryData.store.orders.deltaPct)} />
+                  <InsightMetric label="Average order value" value={fmt(summaryData.store.averageOrderValue.value)} change={delta(summaryData.store.averageOrderValue.deltaPct)} />
+                  <InsightMetric label="Profit margin" value={`${summaryData.store.margin.toFixed(1)}%`} />
+                </div>
+              ) : <InsightSkeleton />}
+            </Card>
+          </AnimatedCard>
+
+          <AnimatedCard delay={0.65}>
+            <Card className="h-full p-4">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/10 text-sky-500">
+                  <MousePointer2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">Traffic insights</div>
+                  <div className="text-[10px] text-muted-foreground">Reach, clicks, and conversions</div>
+                </div>
+              </div>
+              {summaryData ? (
+                <div className="space-y-3">
+                  <InsightMetric label="Impressions" value={formatNumber(summaryData.traffic.impressions.value)} change={delta(summaryData.traffic.impressions.deltaPct)} />
+                  <InsightMetric label="Clicks" value={formatNumber(summaryData.traffic.clicks.value)} change={delta(summaryData.traffic.clicks.deltaPct)} />
+                  <InsightMetric label="Click-through rate" value={`${summaryData.traffic.ctr.value.toFixed(2)}%`} change={delta(summaryData.traffic.ctr.deltaPct)} />
+                  <InsightMetric label="Conversions" value={formatNumber(summaryData.traffic.conversions.value)} change={delta(summaryData.traffic.conversions.deltaPct)} />
+                </div>
+              ) : <InsightSkeleton />}
             </Card>
           </AnimatedCard>
         </div>
