@@ -50,7 +50,7 @@ export function LandingPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25">
             <Activity className="h-5 w-5" />
           </div>
-          <span className="text-xl font-bold tracking-tight">Pulse Commerce</span>
+          <span className="text-xl font-bold tracking-tight">CommercePulse</span>
         </div>
         
         <div className="hidden md:flex items-center gap-6">
@@ -105,7 +105,7 @@ export function LandingPage() {
             </h1>
             
             <p className="text-lg md:text-2xl text-white/70 mb-12 max-w-2xl mx-auto text-balance font-medium">
-              Stop wrestling with disconnected spreadsheets. Pulse Commerce is the confident command center for modern ecommerce brands.
+              Stop wrestling with disconnected spreadsheets. CommercePulse is the confident command center for modern ecommerce brands.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -448,14 +448,14 @@ export function LandingPage() {
           <div className="max-w-6xl mx-auto px-6 lg:px-12">
              <div className="text-center mb-16">
               <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">Trusted by the best.</h2>
-              <p className="text-xl text-muted-foreground">Hear from operators who switched to Pulse.</p>
+              <p className="text-xl text-muted-foreground">Hear from operators who switched to CommercePulse.</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
-                { quote: "Pulse finally gave us a unified view of our ad spend vs actual net profit. We cut 20% of wasteful spend in week one.", name: "David Chen", role: "CMO", co: "Aura Essentials" },
+                { quote: "CommercePulse finally gave us a unified view of our ad spend vs actual net profit. We cut 20% of wasteful spend in week one.", name: "David Chen", role: "CMO", co: "Aura Essentials" },
                 { quote: "The easiest Shopify integration I've ever used. No code, no spreadsheets, just accurate margins right out of the box.", name: "Sarah Williams", role: "Founder", co: "Lumina Home" },
-                { quote: "We were flying blind on Amazon vs DTC profitability. Now we check Pulse every morning before making any decisions.", name: "Marcus Johnson", role: "Director of E-com", co: "Trek Gear" }
+                { quote: "We were flying blind on Amazon vs DTC profitability. Now we check CommercePulse every morning before making any decisions.", name: "Marcus Johnson", role: "Director of E-com", co: "Trek Gear" }
               ].map((t, i) => (
                 <div key={i} className="bg-[#0a0a0f] text-white p-8 rounded-3xl flex flex-col justify-between shadow-xl">
                   <div className="mb-8">
@@ -535,7 +535,7 @@ export function LandingPage() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Activity className="h-4 w-4" />
               </div>
-              Pulse
+              CommercePulse
             </div>
             <p className="text-sm text-muted-foreground">The confident command center for modern ecommerce brands.</p>
           </div>
@@ -563,8 +563,10 @@ export function LandingPage() {
           <div>
             <h4 className="font-bold mb-4">Legal</h4>
             <ul className="space-y-3 text-sm text-muted-foreground mb-6">
-              <li><Link href="#" className="hover:text-foreground transition-colors" data-testid="link-footer-privacy">Privacy Policy</Link></li>
-              <li><Link href="#" className="hover:text-foreground transition-colors" data-testid="link-footer-terms">Terms of Service</Link></li>
+              <li><Link href="/privacy" className="hover:text-foreground transition-colors" data-testid="link-footer-privacy">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="hover:text-foreground transition-colors" data-testid="link-footer-terms">Terms of Service</Link></li>
+              <li><Link href="/cookies" className="hover:text-foreground transition-colors" data-testid="link-footer-cookies">Cookie Policy</Link></li>
+              <li><Link href="/security" className="hover:text-foreground transition-colors" data-testid="link-footer-security">Security</Link></li>
             </ul>
             <div>
               <h4 className="font-bold mb-3 text-sm">Subscribe to updates</h4>
@@ -577,7 +579,7 @@ export function LandingPage() {
         </div>
         
         <div className="max-w-7xl mx-auto pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Pulse Commerce Inc. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} CommercePulse Inc. All rights reserved.</p>
           <div className="flex gap-4 font-medium">
             <Link href="#" className="hover:text-foreground transition-colors" data-testid="link-social-twitter">Twitter</Link>
             <Link href="#" className="hover:text-foreground transition-colors" data-testid="link-social-linkedin">LinkedIn</Link>

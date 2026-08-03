@@ -2,7 +2,7 @@
  * Integration adapter contract.
  *
  * Adapters are responsible for: validating credentials, fetching external data,
- * and normalizing it into Pulse Commerce schemas. The sync engine calls them.
+ * and normalizing it into CommercePulse schemas. The sync engine calls them.
  */
 export interface IntegrationAdapter {
   platform: string;

@@ -468,7 +468,7 @@ function buildReceiptHtml(input: {
         <tr><td style="color:#555;padding:2px 0">Tax</td><td style="text-align:right;padding:2px 0">${money(input.tax)}</td></tr>
         <tr style="border-top:1px solid #e5e5e5"><td style="padding-top:8px;font-weight:600">Total</td><td style="text-align:right;padding-top:8px;font-weight:600;color:${theme.accent}">${money(input.total)}</td></tr>
       </table>
-      <p style="color:#999;font-size:12px;margin-top:32px">Sent by ${input.storeName} via Pulse Commerce.</p>
+      <p style="color:#999;font-size:12px;margin-top:32px">Sent by ${input.storeName} via CommercePulse.</p>
     </div>
   </div>`;
 }

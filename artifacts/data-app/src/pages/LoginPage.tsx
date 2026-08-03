@@ -297,7 +297,7 @@ export function LoginPage({ defaultMode = "login" }: { defaultMode?: Mode }) {
             >
               <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span>Demo account: <span className="font-semibold text-foreground">demo@pulse.test</span> / <span className="font-semibold text-foreground">demo1234</span></span>
+                <span>CommercePulse demo: <span className="font-semibold text-foreground">demo@pulse.test</span> / <span className="font-semibold text-foreground">demo1234</span></span>
               </div>
             </motion.div>
           )}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Megaphone } from "lucide-react";
-import { useGetMarketingSummary, useListCampaigns } from "@workspace/api-client-react";
+import { Megaphone, Palette, Target, Trophy } from "lucide-react";
+import { useGetInsightsSummary, useGetMarketingSummary, useListCampaigns } from "@workspace/api-client-react";
 import { useDateRange, RANGE_LABELS } from "../contexts/DateRangeContext";
 import { Skeleton, EmptyState } from "../components/UIPrimitives";
 import { ConnectFirst } from "../components/ConnectFirst";
@@ -39,7 +39,9 @@ export function MarketingPage({ hasConnected = true, onGoToSettings }: Marketing
   const [sort, setSort] = useState<SortKey>("roas");
   const summary = useGetMarketingSummary({ range }, { query: { enabled: hasConnected, queryKey: ["marketing", "summary", range] } });
   const campaigns = useListCampaigns({ range }, { query: { enabled: hasConnected, queryKey: ["marketing", "campaigns", range] } });
+  const insightsSummary = useGetInsightsSummary({ range }, { query: { enabled: hasConnected, queryKey: ["marketing", "highlights", range] } });
   const s = summary.data;
+  const highlights = insightsSummary.data?.highlights;
 
   const sorted = [...(campaigns.data ?? [])].sort((a, b) => {
     if (sort === "roas") return b.roas - a.roas;
@@ -160,8 +162,108 @@ export function MarketingPage({ hasConnected = true, onGoToSettings }: Marketing
             })}
           </AnimatedList>
         )}
+
+         <motion.div
+           initial={{ opacity: 0, y: 8 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ delay: 0.35 }}
+           className="mt-8"
+         >
+           <div className="mb-3 flex items-end justify-between gap-3">
+             <div>
+               <div className="text-base font-bold">Performance highlights</div>
+               <div className="text-xs text-muted-foreground">Live ad-set and creative performance from synced platform data</div>
+             </div>
+             <Trophy className="hidden h-5 w-5 text-amber-500 sm:block" />
+           </div>
+           {insightsSummary.isLoading ? (
+             <div className="grid gap-4 lg:grid-cols-2">
+               <div className="shimmer-bg h-56 rounded-2xl" />
+               <div className="shimmer-bg h-56 rounded-2xl" />
+             </div>
+           ) : (
+             <div className="grid gap-4 lg:grid-cols-2">
+               <PerformancePanel
+                 title="Top ad sets"
+                 icon={<Target className="h-4 w-4 text-violet-500" />}
+                 items={highlights?.adSets ?? []}
+                 empty="No ad-set metrics have been synced for this period."
+                 fmt={formatCompact}
+               />
+               <PerformancePanel
+                 title="Top creatives"
+                 icon={<Palette className="h-4 w-4 text-pink-500" />}
+                 items={highlights?.creatives ?? []}
+                 empty="No creative-level metrics have been synced for this period."
+                 fmt={formatCompact}
+               />
+             </div>
+           )}
+         </motion.div>
         </>}
       </div>
     </AnimatedPage>
+  );
+}
+
+function PerformancePanel({
+  title,
+  icon,
+  items,
+  empty,
+  fmt,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  items: Array<{
+    id: string;
+    name: string;
+    channel: string;
+    parentName?: string;
+    spend: number;
+    revenue: number;
+    conversions: number;
+    roas: number;
+    ctr: number;
+  }>;
+  empty: string;
+  fmt: (value: number) => string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[hsl(var(--card-border))] bg-card p-4">
+      <div className="mb-3 flex items-center gap-2 text-sm font-semibold">{icon}{title}</div>
+      {items.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[hsl(var(--card-border))] p-5 text-center text-xs text-muted-foreground">
+          {empty}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {items.slice(0, 5).map((item, index) => (
+            <div key={item.id} className="rounded-xl bg-muted/30 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-muted-foreground">#{index + 1}</span>
+                    <span className="truncate text-sm font-semibold">{item.name}</span>
+                  </div>
+                  <div className="mt-1 truncate text-[10px] text-muted-foreground">
+                    {item.channel} · {item.parentName ?? "Synced platform entity"}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="text-sm font-bold text-emerald-500">{item.roas.toFixed(2)}x ROAS</div>
+                  <div className="text-[10px] text-muted-foreground">{item.ctr.toFixed(2)}% CTR</div>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-[10px]">
+                <div><span className="block text-muted-foreground">Spend</span><span className="font-semibold">{fmt(item.spend)}</span></div>
+                <div><span className="block text-muted-foreground">Revenue</span><span className="font-semibold">{fmt(item.revenue)}</span></div>
+                <div><span className="block text-muted-foreground">Conversions</span><span className="font-semibold">{item.conversions.toLocaleString()}</span></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

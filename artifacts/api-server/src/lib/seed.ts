@@ -147,7 +147,7 @@ export async function seedDemoData(userId: string): Promise<void> {
     userId,
     type: "account.created",
     title: "Account ready",
-    description: "Pulse Commerce dashboard initialized with sample data",
+    description: "CommercePulse dashboard initialized with sample data",
   });
   await ActivityService.log({
     userId,

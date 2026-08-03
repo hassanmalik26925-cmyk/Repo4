@@ -414,7 +414,7 @@ export function SettingsPage() {
         .join("");
 
       const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Pulse Commerce Report</title>
+<html><head><meta charset="utf-8"><title>CommercePulse Report</title>
 <style>
   body { font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 32px; color: #111; background: #fff; }
   h1 { font-size: 26px; font-weight: 800; margin: 0 0 4px; }
@@ -436,7 +436,7 @@ export function SettingsPage() {
   .footer { margin-top: 40px; font-size: 11px; color: #aaa; text-align: center; }
   @media print { body { padding: 20px; } .section { break-before: auto; } }
 </style></head><body>
-<h1>Commerce Pulse — Full Dashboard Report</h1>
+<h1>CommercePulse — Full Dashboard Report</h1>
 <p class="sub">Period: ${rangeLabel} &nbsp;·&nbsp; Generated: ${new Date().toLocaleString()} &nbsp;·&nbsp; ${user?.email ?? ""}</p>
 
 <p class="section">Key Metrics</p>
@@ -480,7 +480,7 @@ ${
     : `<p class="empty">No orders in this period.</p>`
 }
 
-<p class="footer">INSIDE NEXUS &nbsp;·&nbsp; Commerce Pulse v1.0.0</p>
+<p class="footer">CommercePulse &nbsp;·&nbsp; Dashboard Report</p>
 <script>window.onload = () => { window.print(); }<\/script>
 </body></html>`;
 
@@ -826,7 +826,7 @@ ${
       </button>
 
       <p className="pb-4 text-center text-[10px] tracking-widest text-muted-foreground/50">
-        INSIDE NEXUS
+        COMMERCEPULSE
       </p>
 
       {/* ── Toast ───────────────────────────────────────────────────── */}

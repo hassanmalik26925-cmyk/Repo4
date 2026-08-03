@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import { Store, Loader2 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
@@ -8,6 +8,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { LandingPage } from "./pages/LandingPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { OrdersPage } from "./pages/OrdersPage";
+import { CustomersPage } from "./pages/CustomersPage";
 import { MarketingPage } from "./pages/MarketingPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -17,6 +18,7 @@ import { useListIntegrations, useGetOnboardingStatus } from "@workspace/api-clie
 import { SetupPage } from "./pages/SetupPage";
 import { ToastContainer } from "./components/ToastContainer";
 import { useSSE } from "./hooks/useSSE";
+import { LegalPage } from "./pages/LegalPage";
 
 function NoIntegrationScreen({ onGoToSettings }: { onGoToSettings: () => void }) {
   return (
@@ -87,6 +89,7 @@ function AuthenticatedApp() {
       >
         {screen === "dashboard" && <DashboardPage onNavigate={setScreen} hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "orders" && <OrdersPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
+        {screen === "customers" && <CustomersPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "marketing" && <MarketingPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "products" && <ProductsPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "admin" && <AdminPage />}
@@ -137,6 +140,10 @@ function UnauthenticatedApp() {
       <Route path="/register"><LoginPage defaultMode="register" /></Route>
       <Route path="/forgot-password"><LoginPage defaultMode="forgot" /></Route>
       <Route path="/reset-password"><LoginPage defaultMode="reset" /></Route>
+      <Route path="/privacy"><LegalPage document="privacy" /></Route>
+      <Route path="/terms"><LegalPage document="terms" /></Route>
+      <Route path="/cookies"><LegalPage document="cookies" /></Route>
+      <Route path="/security"><LegalPage document="security" /></Route>
       <Route path="/"><LandingPage /></Route>
       {/* Fallback for unknown routes */}
       <Route><LandingPage /></Route>
@@ -146,6 +153,7 @@ function UnauthenticatedApp() {
 
 export default function App() {
   const { ready, user } = useAuth();
+  const [location] = useLocation();
 
   if (!ready) {
     return (
@@ -158,6 +166,12 @@ export default function App() {
       </div>
     );
   }
+
+  // Keep the public legal pages reachable even when a user is already signed in.
+  if (location === "/privacy") return <LegalPage document="privacy" />;
+  if (location === "/terms") return <LegalPage document="terms" />;
+  if (location === "/cookies") return <LegalPage document="cookies" />;
+  if (location === "/security") return <LegalPage document="security" />;
 
   if (!user) return <UnauthenticatedApp />;
 

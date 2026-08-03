@@ -2,18 +2,19 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity as ActivityIcon, LayoutGrid, ShoppingBag, Megaphone,
-  Package, Settings as SettingsIcon, Sun, Moon, Calendar, Shield, Check,
+  Package, Settings as SettingsIcon, Sun, Moon, Calendar, Shield, Check, Users,
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { RANGE_OPTIONS, RANGE_LABELS, type RangeKey, useDateRange } from "../contexts/DateRangeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { NotificationBell } from "./NotificationBell";
 
-export type Screen = "dashboard" | "orders" | "marketing" | "products" | "settings" | "admin";
+export type Screen = "dashboard" | "orders" | "customers" | "marketing" | "products" | "settings" | "admin";
 
 const navItems: { key: Screen; label: string; icon: ReactNode }[] = [
   { key: "dashboard", label: "Dashboard", icon: <LayoutGrid className="h-[22px] w-[22px]" /> },
   { key: "orders", label: "Orders", icon: <ShoppingBag className="h-[22px] w-[22px]" /> },
+  { key: "customers", label: "Customers", icon: <Users className="h-[22px] w-[22px]" /> },
   { key: "marketing", label: "Marketing", icon: <Megaphone className="h-[22px] w-[22px]" /> },
   { key: "products", label: "Products", icon: <Package className="h-[22px] w-[22px]" /> },
   { key: "settings", label: "Settings", icon: <SettingsIcon className="h-[22px] w-[22px]" /> },
@@ -92,8 +93,8 @@ export function TopBar() {
             <ActivityIcon className="h-4 w-4" />
           </motion.span>
           <div className="leading-tight">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Commerce</div>
-            <div className="text-sm font-semibold">Pulse</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Analytics</div>
+            <div className="text-sm font-semibold">CommercePulse</div>
           </div>
           <motion.button
             onClick={toggle}
@@ -119,7 +120,7 @@ export function BottomNav({ active, onChange }: { active: Screen; onChange: (s: 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[hsl(var(--card-border))] bg-background/95 backdrop-blur-md">
       <div className="mx-auto max-w-[1100px] px-2 sm:px-6">
-        <ul className={`grid gap-1 py-2 pb-[max(8px,env(safe-area-inset-bottom))] ${items.length === 5 ? "grid-cols-5" : "grid-cols-6"}`}>
+        <ul className={`grid gap-1 py-2 pb-[max(8px,env(safe-area-inset-bottom))] ${items.length <= 5 ? "grid-cols-5" : items.length === 6 ? "grid-cols-6" : "grid-cols-7"}`}>
           {items.map((item) => {
             const isActive = active === item.key;
             return (

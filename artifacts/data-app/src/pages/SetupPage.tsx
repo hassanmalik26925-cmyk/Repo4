@@ -74,7 +74,7 @@ export function SetupPage({ onComplete }: SetupPageProps) {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Store className="h-4 w-4" />
           </div>
-          Pulse Commerce
+          CommercePulse
         </div>
 
         <div className="flex flex-col gap-6 flex-1">
@@ -124,7 +124,7 @@ export function SetupPage({ onComplete }: SetupPageProps) {
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Store className="h-3 w-3" />
             </div>
-            Pulse
+                    CommercePulse
           </div>
           <div className="text-xs font-semibold text-muted-foreground">
             Step {step + 1} of {steps.length}
@@ -151,7 +151,7 @@ export function SetupPage({ onComplete }: SetupPageProps) {
                     <Store className="h-8 w-8" />
                   </div>
                   <h1 className="text-3xl sm:text-4xl font-extrabold mb-4 tracking-tight">
-                    Hey {user?.name?.split(' ')[0] || 'Operator'}, welcome to Pulse!
+                    Hey {user?.name?.split(' ')[0] || 'Operator'}, welcome to CommercePulse!
                   </h1>
                   <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
                     We're going to set up your command center. It only takes about two minutes, and it'll help us tailor your dashboard to your business needs.

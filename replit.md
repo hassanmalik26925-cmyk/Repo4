@@ -26,7 +26,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
-## Pulse Commerce App
+## CommercePulse App
 
 Production e-commerce analytics dashboard backed by Postgres.
 
@@ -35,4 +35,4 @@ Production e-commerce analytics dashboard backed by Postgres.
 - **Demo user**: `demo@pulse.test` / `demo1234` (seed data: 90d orders, 5 campaigns, integrations).
 - **Schemas/hooks**: regenerate with `pnpm --filter @workspace/api-spec run codegen` after editing the OpenAPI spec.
 - **Manual data entry**: Products support full CRUD (add/edit price, cogs, stock via `/api/products`), and Settings has a custom Shipping Rates editor (`/api/shipping-rates`) for region/order-value-based rate rules — both DB-backed, no mock data.
-- **Demo vs. real users**: `usersTable.isDemo` ("true"/"false" text column) marks `demo@pulse.test`. Demo users' integration "disconnect" is a no-op (stays connected) so the demo always shows live-looking data; real users disconnect normally.
+- **Demo vs. real users**: `usersTable.isDemo` ("true"/"false" text column) marks `demo@pulse.test`. Demo users retain seeded sample data even when an integration is toggled disconnected; real users see no analytics until an integration is connected.
