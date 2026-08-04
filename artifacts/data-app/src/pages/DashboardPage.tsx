@@ -75,15 +75,23 @@ const SEVERITY_CONFIG = {
 interface InsightItem {
   id: string; severity: string; title: string; description: string;
   metric?: string; action?: string;
+  actionTarget?: InsightNavigationTarget;
 }
 
-function InsightCard({ insight, onNavigate }: { insight: InsightItem; onNavigate: (screen: Screen) => void }) {
+type InsightNavigationTarget = {
+  screen?: Screen;
+  section?: string;
+  entityId?: string;
+  focus?: string;
+};
+
+function InsightCard({ insight, onNavigate }: { insight: InsightItem; onNavigate: (target: InsightNavigationTarget) => void }) {
   const [expanded, setExpanded] = useState(false);
   const sev = (insight.severity as keyof typeof SEVERITY_CONFIG) in SEVERITY_CONFIG
     ? (insight.severity as keyof typeof SEVERITY_CONFIG)
     : "info";
   const cfg = SEVERITY_CONFIG[sev];
-  const target = INSIGHT_TARGET[insight.id];
+  const target = insight.actionTarget ?? { screen: INSIGHT_TARGET[insight.id] };
   return (
     <motion.div
       layout
@@ -214,7 +222,7 @@ function HighlightRow({
   );
 }
 
-export function DashboardPage({ onNavigate, hasConnected = true, onGoToSettings }: { onNavigate: (screen: Screen) => void; hasConnected?: boolean; onGoToSettings?: () => void }) {
+export function DashboardPage({ onNavigate, hasConnected = true, onGoToSettings }: { onNavigate: (target: InsightNavigationTarget) => void; hasConnected?: boolean; onGoToSettings?: () => void }) {
   const { range } = useDateRange();
   const { format: fmt } = useCurrency();
   const overview = useGetDashboardOverview({ range }, { query: { enabled: hasConnected, queryKey: ["dashboard", "overview", range] } });

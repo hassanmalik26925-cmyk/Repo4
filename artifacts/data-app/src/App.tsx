@@ -56,7 +56,7 @@ function NoIntegrationScreen({ onGoToSettings }: { onGoToSettings: () => void })
 function AuthenticatedApp() {
   const [screen, setScreen] = useState<Screen>("dashboard");
   const [reportSection, setReportSection] = useState<"overview" | "sales" | "profitability" | "marketing" | "customers" | "products" | "channels" | "traffic" | "exports">("overview");
-  const [productFocusId, setProductFocusId] = useState<string | undefined>();
+  const [productFocus, setProductFocus] = useState<{ id?: string; focus?: string }>({});
   const [marketingFocus, setMarketingFocus] = useState<string | undefined>();
   const integrations = useListIntegrations();
   const onboardingStatus = useGetOnboardingStatus();
@@ -70,7 +70,9 @@ function AuthenticatedApp() {
       const section = target.section as typeof reportSection;
       setReportSection(section);
     }
-    if (target.screen === "products") setProductFocusId(target.entityId);
+    if (target.screen === "products") {
+      setProductFocus({ id: target.entityId, focus: target.focus });
+    }
     if (target.screen === "marketing") setMarketingFocus(target.entityId ?? target.focus);
     setScreen(target.screen);
   }
@@ -103,11 +105,11 @@ function AuthenticatedApp() {
         exit={{ opacity: 0, x: -20 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
-        {screen === "dashboard" && <DashboardPage onNavigate={setScreen} hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
+        {screen === "dashboard" && <DashboardPage onNavigate={handleInsightNavigation} hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "orders" && <OrdersPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "reports" && <ReportsPage hasConnected={hasConnected} initialSection={reportSection} onNavigateInsight={handleInsightNavigation} onGoToSettings={() => setScreen("settings")} />}
         {screen === "marketing" && <MarketingPage hasConnected={hasConnected} focusId={marketingFocus} onGoToSettings={() => setScreen("settings")} />}
-        {screen === "products" && <ProductsPage hasConnected={hasConnected} focusId={productFocusId} onGoToSettings={() => setScreen("settings")} />}
+        {screen === "products" && <ProductsPage hasConnected={hasConnected} focusId={productFocus.id} focus={productFocus.focus} onGoToSettings={() => setScreen("settings")} />}
         {screen === "admin" && <AdminPage />}
       </motion.div>
     </AnimatePresence>

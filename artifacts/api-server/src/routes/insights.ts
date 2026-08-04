@@ -294,6 +294,45 @@ router.get("/insights", async (req, res): Promise<void> => {
       });
     }
 
+    // High COGS: surface the specific catalog item so the operator can fix the
+    // cost input immediately instead of landing on a generic products view.
+    const [highCogsProduct] = await db
+      .select({
+        id: productsTable.id,
+        name: productsTable.name,
+        price: productsTable.price,
+        cogs: productsTable.cogs,
+      })
+      .from(productsTable)
+      .where(
+        and(
+          eq(productsTable.userId, userId),
+          sql`${productsTable.price} > 0`,
+          sql`${productsTable.cogs} / NULLIF(${productsTable.price}, 0) >= 0.6`,
+        ),
+      )
+      .orderBy(sql`${productsTable.cogs} / NULLIF(${productsTable.price}, 0) DESC`)
+      .limit(1);
+
+    if (highCogsProduct) {
+      const price = Number(highCogsProduct.price);
+      const cogs = Number(highCogsProduct.cogs);
+      const cogsPct = price > 0 ? (cogs / price) * 100 : 0;
+      insights.push({
+        id: "high-cogs-product",
+        severity: cogsPct >= 75 ? "critical" : "warning",
+        title: `COGS too high for ${highCogsProduct.name}`,
+        description: `${highCogsProduct.name} costs ${cogsPct.toFixed(1)}% of its ${price.toFixed(2)} selling price before fees, shipping, or ads. Review supplier pricing or raise the price to protect margin.`,
+        metric: `${cogsPct.toFixed(1)}% COGS`,
+        action: "Review product costs",
+        actionTarget: {
+          screen: "products",
+          entityId: highCogsProduct.id,
+          focus: "costs",
+        },
+      });
+    }
+
     // ── 4. Order velocity ──────────────────────────────────────────────────────
     const aovChange = ordersCount > 0 && prevOrders > 0 ? pct(aov, prevOrders > 0 ? prevRevenue / prevOrders : aov) : 0;
     if (aovChange >= 15) {

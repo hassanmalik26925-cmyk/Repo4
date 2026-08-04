@@ -63,7 +63,10 @@ function CostBreakdown({ product }: { product: any }) {
       transition={{ duration: 0.3 }}
       className="overflow-hidden"
     >
-      <div className="mt-3 rounded-xl border border-[hsl(var(--card-border))] bg-[hsl(var(--muted)/0.4)] p-3">
+      <div
+        id={`product-costs-${product.id}`}
+        className="mt-3 rounded-xl border border-[hsl(var(--card-border))] bg-[hsl(var(--muted)/0.4)] p-3"
+      >
         <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
           <span className="text-[10px] font-semibold uppercase tracking-wider">Per Unit</span>
           <span className="font-bold text-foreground">{fmt(price)}</span>
@@ -222,9 +225,10 @@ interface ProductsPageProps {
   hasConnected?: boolean;
   onGoToSettings?: () => void;
   focusId?: string;
+  focus?: string;
 }
 
-export function ProductsPage({ hasConnected = true, onGoToSettings, focusId }: ProductsPageProps) {
+export function ProductsPage({ hasConnected = true, onGoToSettings, focusId, focus }: ProductsPageProps) {
   const { range } = useDateRange();
   const { format: fmt, formatCompact } = useCurrency();
   const queryClient = useQueryClient();
@@ -238,8 +242,24 @@ export function ProductsPage({ hasConnected = true, onGoToSettings, focusId }: P
   useEffect(() => {
     if (focusId && items.some((product) => product.id === focusId)) {
       setEditingId(focusId);
+      if (focus === "costs") {
+        setExpanded((previous) => {
+          const next = new Set(previous);
+          next.add(focusId);
+          return next;
+        });
+      }
+      requestAnimationFrame(() => {
+        const target = focus === "costs"
+          ? document.getElementById(`product-costs-${focusId}`)
+          : document.getElementById(`product-${focusId}`);
+        (target ?? document.getElementById(`product-${focusId}`))?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
     }
-  }, [focusId, items]);
+  }, [focus, focusId, items]);
 
   const deleteProduct = useDeleteProduct({
     mutation: {
@@ -347,9 +367,14 @@ export function ProductsPage({ hasConnected = true, onGoToSettings, focusId }: P
               return (
                 <AnimatedListItem key={p.id}>
                   <motion.div
+                    id={`product-${p.id}`}
                     whileHover={{ scale: 1.01, y: -1 }}
                     transition={{ duration: 0.2 }}
-                    className="rounded-2xl border border-[hsl(var(--card-border))] bg-card p-4 hover:shadow-lg hover:shadow-black/5 transition-shadow"
+                    className={`rounded-2xl border bg-card p-4 transition-shadow hover:shadow-lg hover:shadow-black/5 ${
+                      focusId === p.id && focus === "costs"
+                        ? "border-orange-300 ring-2 ring-orange-200/70 dark:border-orange-700 dark:ring-orange-950/60"
+                        : "border-[hsl(var(--card-border))]"
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
@@ -358,6 +383,11 @@ export function ProductsPage({ hasConnected = true, onGoToSettings, focusId }: P
                         </span>
                         <div className="text-base font-bold leading-snug">{p.name}</div>
                         <div className="text-xs text-muted-foreground">{formatNumber(p.unitsSold)} units sold</div>
+                        {focusId === p.id && focus === "costs" && (
+                          <div className="mt-2 inline-flex items-center rounded-full bg-orange-500/10 px-2 py-1 text-[10px] font-semibold text-orange-700 dark:text-orange-300">
+                            Review this product's COGS
+                          </div>
+                        )}
                       </div>
                       <div className="text-right shrink-0">
                         <div className="text-base font-bold">{formatCompact(p.revenue)}</div>
