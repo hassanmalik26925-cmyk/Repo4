@@ -6,7 +6,7 @@ import { CustomerService } from "../services/CustomerService";
 
 const router: IRouter = Router();
 router.use(requireAuth);
-router.use(requirePaidAccess);
+router.use("/customers", requirePaidAccess);
 
 router.get("/customers", async (req, res): Promise<void> => {
   const userId = req.user!.sub;

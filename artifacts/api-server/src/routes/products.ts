@@ -16,7 +16,7 @@ import { ActivityService } from "../services/ActivityService";
 
 const router: IRouter = Router();
 router.use(requireAuth);
-router.use(requirePaidAccess);
+router.use("/products", requirePaidAccess);
 
 router.get("/products", async (req, res): Promise<void> => {
   const userId = req.user!.sub;

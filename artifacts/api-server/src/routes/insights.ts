@@ -18,7 +18,7 @@ import { GetInsightsResponse, GetInsightsSummaryResponse } from "@workspace/api-
 
 const router: IRouter = Router();
 router.use(requireAuth);
-router.use(requirePaidAccess);
+router.use("/insights", requirePaidAccess);
 
 type InsightSeverity = "critical" | "warning" | "positive" | "info";
 

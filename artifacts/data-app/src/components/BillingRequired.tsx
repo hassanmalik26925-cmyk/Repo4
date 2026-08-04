@@ -30,8 +30,9 @@ export function BillingRequired({ onGoToSettings }: { onGoToSettings: () => void
         Unlock your ecommerce intelligence
       </h2>
       <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-        Subscribe for $9/month to access live orders, customers, profitability,
-        campaigns, creative performance, and actionable insights.
+        Start your 15-day free trial, then continue for $9/month to access live
+        orders, customers, profitability, campaigns, creative performance, and
+        actionable insights.
       </p>
       <div className="mt-6 grid w-full max-w-sm gap-2 text-left text-sm">
         {["Live store and ad data", "Period comparisons and ROAS", "Performance suggestions"].map((item) => (
@@ -48,7 +49,7 @@ export function BillingRequired({ onGoToSettings }: { onGoToSettings: () => void
           className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-sky-500 px-5 text-sm font-bold text-white shadow-lg shadow-sky-500/20 transition hover:bg-sky-600 disabled:opacity-60"
         >
           {checkout.isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-          Subscribe for $9/month
+          Start 15-day free trial
         </button>
         <button
           onClick={onGoToSettings}

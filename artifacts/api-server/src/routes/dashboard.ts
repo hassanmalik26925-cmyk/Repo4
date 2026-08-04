@@ -11,7 +11,7 @@ import { RevenueService } from "../services/RevenueService";
 
 const router: IRouter = Router();
 router.use(requireAuth);
-router.use(requirePaidAccess);
+router.use("/dashboard", requirePaidAccess);
 
 router.get("/dashboard/overview", async (req, res): Promise<void> => {
   const userId = req.user!.sub;

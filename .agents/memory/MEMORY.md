@@ -7,3 +7,4 @@
 - [Receipt email identity](receipt-email-identity.md) — no separate from-address; "from" is the account's own name/email (no store-email field exists in schema).
 - [Performance highlights](performance-highlights.md) — ad-set, creative, and repeat-customer rankings require persisted entity-level metrics; unsupported connectors must show empty states.
 - [Billing membership lookup](billing-membership-lookup.md) — Whop membership access checks must paginate and prefer any active matching membership; inactive cache TTL stays short after checkout.
+- [Billing route boundaries](billing-route-boundaries.md) — paid-access middleware must be scoped only to analytics paths; onboarding, settings, integrations, and checkout stay accessible before payment.

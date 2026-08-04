@@ -480,7 +480,7 @@ export function LandingPage() {
         <section className="py-24 bg-muted/30 border-t border-border">
           <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center">
             <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">Simple, transparent pricing.</h2>
-            <p className="text-xl text-muted-foreground mb-16">Pay for what you need. Scale when you're ready.</p>
+            <p className="text-xl text-muted-foreground mb-16">Start with a 15-day free trial, then pay $9/month. Scale when you're ready.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
               {/* Starter */}
@@ -493,7 +493,7 @@ export function LandingPage() {
                   <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Daily Data Sync</span></li>
                 </ul>
                 <Link href="/register" className="w-full block py-4 text-center rounded-xl border-2 border-border font-bold hover:border-primary hover:text-primary transition-colors" data-testid="btn-pricing-starter">
-                  Talk to us
+                  Start 15-day free trial
                 </Link>
               </div>
 
@@ -509,7 +509,7 @@ export function LandingPage() {
                   <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Custom LTV Models</span></li>
                 </ul>
                 <Link href="/register" className="w-full block py-4 text-center rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20" data-testid="btn-pricing-pro">
-                  Talk to us
+                  Start 15-day free trial
                 </Link>
               </div>
             </div>
@@ -521,7 +521,7 @@ export function LandingPage() {
           <div className="max-w-3xl mx-auto space-y-10">
             <h2 className="text-5xl md:text-7xl font-extrabold tracking-tight text-balance leading-tight">Your command center is ready.</h2>
             <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-primary text-white px-10 py-5 text-lg font-bold transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(79,70,229,0.5)] active:scale-95" data-testid="btn-final-cta">
-              Get Started Free <ArrowRight className="h-5 w-5" />
+              Start your 15-day free trial <ArrowRight className="h-5 w-5" />
             </Link>
           </div>
         </section>

@@ -23,8 +23,11 @@ router.post("/billing/checkout", async (req, res): Promise<void> => {
   try {
     const requestedRedirect =
       typeof req.body?.redirectUrl === "string" ? req.body.redirectUrl : "";
+    const forwardedProto = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const forwardedHost = req.get("x-forwarded-host")?.split(",")[0]?.trim();
     const requestOrigin =
-      req.get("origin") ?? `${req.protocol}://${req.get("host")}`;
+      req.get("origin") ??
+      `${forwardedProto === "https" ? "https" : req.protocol}://${forwardedHost ?? req.get("host")}`;
     let redirectUrl = `${requestOrigin}/`;
     if (requestedRedirect) {
       const parsed = new URL(requestedRedirect);
@@ -37,6 +40,12 @@ router.post("/billing/checkout", async (req, res): Promise<void> => {
         return;
       }
       redirectUrl = parsed.toString();
+    }
+    if (new URL(redirectUrl).protocol !== "https:") {
+      res.status(400).json({
+        error: "Checkout requires a secure HTTPS return URL. Please open CommercePulse from its secure preview or published URL.",
+      });
+      return;
     }
     const result = await createCheckout(
       req.user!.sub,

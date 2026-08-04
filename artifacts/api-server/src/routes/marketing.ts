@@ -11,7 +11,7 @@ import { MarketingService } from "../services/MarketingService";
 
 const router: IRouter = Router();
 router.use(requireAuth);
-router.use(requirePaidAccess);
+router.use("/marketing", requirePaidAccess);
 
 router.get("/marketing/summary", async (req, res): Promise<void> => {
   const userId = req.user!.sub;

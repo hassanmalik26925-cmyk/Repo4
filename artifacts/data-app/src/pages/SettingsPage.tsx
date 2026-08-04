@@ -628,7 +628,7 @@ ${
                 ? billing.data.cancelAtPeriodEnd
                   ? `Access ends ${billing.data.renewalEnd ? new Date(billing.data.renewalEnd).toLocaleDateString() : "after this period"}.`
                   : `Active at $${billing.data.price}/month${billing.data.renewalEnd ? ` · renews ${new Date(billing.data.renewalEnd).toLocaleDateString()}` : ""}.`
-                : "Unlock live analytics, performance rankings, and actionable insights for $9/month."}
+                : "Start with a 15-day free trial, then continue for $9/month to unlock live analytics, performance rankings, and actionable insights."}
             </p>
           </div>
         </div>
@@ -639,7 +639,7 @@ ${
               disabled={checkout.isPending || billing.isLoading}
               className="rounded-full bg-sky-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-sky-600 disabled:opacity-50"
             >
-              {checkout.isPending ? "Opening checkout…" : "Subscribe for $9/month"}
+              {checkout.isPending ? "Opening checkout…" : "Start 15-day free trial"}
             </button>
           )}
           {billing.data?.hasAccess && billing.data.manageUrl && (
