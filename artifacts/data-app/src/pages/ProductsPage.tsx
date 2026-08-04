@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, Package, Plus, Pencil, Trash2, Loader2, Check, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -221,9 +221,10 @@ function EditProductForm({ product, onDone }: { product: any; onDone: () => void
 interface ProductsPageProps {
   hasConnected?: boolean;
   onGoToSettings?: () => void;
+  focusId?: string;
 }
 
-export function ProductsPage({ hasConnected = true, onGoToSettings }: ProductsPageProps) {
+export function ProductsPage({ hasConnected = true, onGoToSettings, focusId }: ProductsPageProps) {
   const { range } = useDateRange();
   const { format: fmt, formatCompact } = useCurrency();
   const queryClient = useQueryClient();
@@ -233,6 +234,12 @@ export function ProductsPage({ hasConnected = true, onGoToSettings }: ProductsPa
   const [showAddForm, setShowAddForm] = useState(false);
   const list = useListProducts({ range }, { query: { enabled: hasConnected, queryKey: ["products", range] } });
   const items = list.data ?? [];
+
+  useEffect(() => {
+    if (focusId && items.some((product) => product.id === focusId)) {
+      setEditingId(focusId);
+    }
+  }, [focusId, items]);
 
   const deleteProduct = useDeleteProduct({
     mutation: {

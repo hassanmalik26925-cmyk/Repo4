@@ -27,6 +27,24 @@ interface Insight {
   description: string;
   metric?: string;
   action?: string;
+  actionTarget?: {
+    screen: "dashboard" | "orders" | "reports" | "marketing" | "products" | "settings";
+    section?: string;
+    entityId?: string;
+    focus?: string;
+  };
+}
+
+function targetForInsight(id: string): Insight["actionTarget"] {
+  if (id === "low-stock" || id === "out-of-stock" || id === "low-margin" || id === "thin-margin") {
+    return { screen: "products", focus: id === "low-margin" || id === "thin-margin" ? "costs" : "inventory" };
+  }
+  if (id === "no-data" || id === "revenue-drop") return { screen: "settings", focus: "integrations" };
+  if (id.startsWith("roas") || id.includes("campaign") || id === "revenue-surge") {
+    return { screen: "marketing", focus: id };
+  }
+  if (id.startsWith("aov")) return { screen: "reports", section: "sales" };
+  return { screen: "reports", section: "overview" };
 }
 
 function pct(a: number, b: number) {
@@ -239,7 +257,7 @@ router.get("/insights", async (req, res): Promise<void> => {
 
     // ── 3. Product insights ────────────────────────────────────────────────────
     const lowStock = await db
-      .select({ name: productsTable.name, stock: productsTable.stock })
+      .select({ id: productsTable.id, name: productsTable.name, stock: productsTable.stock })
       .from(productsTable)
       .where(and(eq(productsTable.userId, userId), sql`${productsTable.stock} > 0 AND ${productsTable.stock} < 10`))
       .limit(5);
@@ -253,11 +271,12 @@ router.get("/insights", async (req, res): Promise<void> => {
         description: `${names} — reorder soon to avoid lost sales.`,
         metric: `${lowStock.length} products`,
         action: "Reorder inventory",
+        actionTarget: { screen: "products", entityId: lowStock[0]?.id, focus: "inventory" },
       });
     }
 
     const zeroStock = await db
-      .select({ name: productsTable.name })
+      .select({ id: productsTable.id, name: productsTable.name })
       .from(productsTable)
       .where(and(eq(productsTable.userId, userId), sql`${productsTable.stock} = 0`))
       .limit(3);
@@ -271,6 +290,7 @@ router.get("/insights", async (req, res): Promise<void> => {
         description: `${names}${zeroStock.length > 3 ? " and more" : ""} are out of stock. Every sale missed is revenue lost.`,
         metric: `${zeroStock.length} OOS`,
         action: "Restock immediately",
+        actionTarget: { screen: "products", entityId: zeroStock[0]?.id, focus: "inventory" },
       });
     }
 
@@ -320,7 +340,14 @@ router.get("/insights", async (req, res): Promise<void> => {
     const order: Record<InsightSeverity, number> = { critical: 0, warning: 1, positive: 2, info: 3 };
     insights.sort((a, b) => order[a.severity] - order[b.severity]);
 
-    res.json(GetInsightsResponse.parse({ insights: insights.slice(0, 8) }));
+    res.json(
+      GetInsightsResponse.parse({
+        insights: insights.slice(0, 8).map((insight) => ({
+          ...insight,
+          actionTarget: insight.actionTarget ?? targetForInsight(insight.id),
+        })),
+      }),
+    );
   } catch (err) {
     res.status(500).json({ error: "Insights engine failed" });
   }
@@ -366,6 +393,7 @@ router.get("/insights/summary", async (req, res): Promise<void> => {
       description: `${topAdSet.name} in ${topAdSet.parentName ?? "your campaigns"} generated ${topAdSet.roas.toFixed(2)}x ROAS from ${topAdSet.spend.toFixed(0)} spend, producing ${topAdSet.revenue.toFixed(0)} revenue across ${topAdSet.conversions} conversions. Its ${topAdSet.ctr.toFixed(2)}% CTR is a strong signal to protect the audience and test incremental budget increases.`,
       metric: `${topAdSet.roas.toFixed(2)}x ROAS`,
       action: "Review top ad set",
+       actionTarget: { screen: "marketing", entityId: topAdSet.id, focus: "ad-set" },
     });
   }
   const topCreative = performance.creatives[0];
@@ -377,6 +405,7 @@ router.get("/insights/summary", async (req, res): Promise<void> => {
       description: `${topCreative.name} in ${topCreative.parentName ?? "your ad sets"} drove ${topCreative.conversions} conversions at ${topCreative.roas.toFixed(2)}x ROAS. Keep this creative live while testing new hooks, formats, or opening frames against its ${topCreative.ctr.toFixed(2)}% CTR benchmark.`,
       metric: `${topCreative.conversions} conversions`,
       action: "Compare creative variants",
+       actionTarget: { screen: "marketing", entityId: topCreative.id, focus: "creative" },
     });
   }
   const topRepeatCustomer = repeatCustomers[0];
@@ -388,6 +417,7 @@ router.get("/insights/summary", async (req, res): Promise<void> => {
       description: `${topRepeatCustomer.name} placed ${topRepeatCustomer.ordersCount} orders in this period and spent ${topRepeatCustomer.totalSpent.toFixed(0)} total, with an average order value of ${topRepeatCustomer.averageOrderValue.toFixed(0)}. Consider a VIP offer, replenishment reminder, or referral request.`,
       metric: `${topRepeatCustomer.ordersCount} orders`,
       action: "View customer orders",
+       actionTarget: { screen: "reports", section: "customers", entityId: topRepeatCustomer.id },
     });
   }
 

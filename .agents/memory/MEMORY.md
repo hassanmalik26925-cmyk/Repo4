@@ -11,3 +11,4 @@
 - [Whop webhook permissions](whop-webhook-permissions.md) — the connected Whop account can manage checkout but lacks company read scope needed to create or list webhook endpoints.
 - [Free commercial mode](free-commercial-mode.md) — billing and Whop are removed from product/API/dependencies; legacy billing columns remain inert for compatibility.
 - [Managed artifact builds](managed-artifact-builds.md) — Vite builds require each artifact's workflow-injected PORT and BASE_PATH values when run manually.
+- [Traffic measurement boundary](traffic-measurement-boundary.md) — GA4/pixel setup must not claim availability until real OAuth or public storefront ingestion exists; keep unsupported traffic as an explicit empty state.

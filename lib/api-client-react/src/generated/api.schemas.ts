@@ -343,6 +343,25 @@ export interface ConnectIntegrationBody {
   sandbox?: boolean;
 }
 
+export type InsightActionTargetScreen =
+  (typeof InsightActionTargetScreen)[keyof typeof InsightActionTargetScreen];
+
+export const InsightActionTargetScreen = {
+  dashboard: "dashboard",
+  orders: "orders",
+  reports: "reports",
+  marketing: "marketing",
+  products: "products",
+  settings: "settings",
+} as const;
+
+export type InsightActionTarget = {
+  screen?: InsightActionTargetScreen;
+  section?: string;
+  entityId?: string;
+  focus?: string;
+};
+
 export interface Insight {
   id: string;
   severity: string;
@@ -350,6 +369,7 @@ export interface Insight {
   description: string;
   metric?: string;
   action?: string;
+  actionTarget?: InsightActionTarget;
 }
 
 export interface InsightsResponse {

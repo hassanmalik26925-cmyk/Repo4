@@ -8,7 +8,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { LandingPage } from "./pages/LandingPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { OrdersPage } from "./pages/OrdersPage";
-import { ReportsPage } from "./pages/ReportsPage";
+import { ReportsPage, type InsightActionTarget } from "./pages/ReportsPage";
 import { MarketingPage } from "./pages/MarketingPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -55,11 +55,25 @@ function NoIntegrationScreen({ onGoToSettings }: { onGoToSettings: () => void })
 
 function AuthenticatedApp() {
   const [screen, setScreen] = useState<Screen>("dashboard");
+  const [reportSection, setReportSection] = useState<"overview" | "sales" | "profitability" | "marketing" | "customers" | "products" | "channels" | "traffic" | "exports">("overview");
+  const [productFocusId, setProductFocusId] = useState<string | undefined>();
+  const [marketingFocus, setMarketingFocus] = useState<string | undefined>();
   const integrations = useListIntegrations();
   const onboardingStatus = useGetOnboardingStatus();
   const { user } = useAuth();
   useSSE();
   useTrafficTracking();
+
+  function handleInsightNavigation(target: InsightActionTarget) {
+    if (!target.screen) return;
+    if (target.screen === "reports" && target.section) {
+      const section = target.section as typeof reportSection;
+      setReportSection(section);
+    }
+    if (target.screen === "products") setProductFocusId(target.entityId);
+    if (target.screen === "marketing") setMarketingFocus(target.entityId ?? target.focus);
+    setScreen(target.screen);
+  }
 
   if (onboardingStatus.isLoading) {
     return (
@@ -91,9 +105,9 @@ function AuthenticatedApp() {
       >
         {screen === "dashboard" && <DashboardPage onNavigate={setScreen} hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "orders" && <OrdersPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
-        {screen === "reports" && <ReportsPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
-        {screen === "marketing" && <MarketingPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
-        {screen === "products" && <ProductsPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
+        {screen === "reports" && <ReportsPage hasConnected={hasConnected} initialSection={reportSection} onNavigateInsight={handleInsightNavigation} onGoToSettings={() => setScreen("settings")} />}
+        {screen === "marketing" && <MarketingPage hasConnected={hasConnected} focusId={marketingFocus} onGoToSettings={() => setScreen("settings")} />}
+        {screen === "products" && <ProductsPage hasConnected={hasConnected} focusId={productFocusId} onGoToSettings={() => setScreen("settings")} />}
         {screen === "admin" && <AdminPage />}
       </motion.div>
     </AnimatePresence>

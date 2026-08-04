@@ -1446,6 +1446,15 @@ components:
         description: { type: string }
         metric: { type: string }
         action: { type: string }
+        actionTarget:
+          type: object
+          properties:
+            screen:
+              type: string
+              enum: [dashboard, orders, reports, marketing, products, settings]
+            section: { type: string }
+            entityId: { type: string }
+            focus: { type: string }
 
     InsightsResponse:
       type: object

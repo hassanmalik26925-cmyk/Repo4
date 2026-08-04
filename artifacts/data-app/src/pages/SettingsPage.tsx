@@ -30,6 +30,9 @@ import {
   Link,
   Download,
   Trash2,
+  BarChart3,
+  MousePointerClick,
+  Server,
 } from "lucide-react";
 import {
   useGetSettings,
@@ -622,6 +625,7 @@ ${
 
       {/* ── Integrations ───────────────────────────────────────────── */}
       <SectionLabel label="Integrations" />
+      <MeasurementSourcesGuide />
       <div className="mb-5 overflow-hidden rounded-2xl border border-[hsl(var(--card-border))] bg-card">
         {integrations.isLoading ? (
           <div className="p-4">
@@ -881,6 +885,67 @@ ${
           {toastMsg}
         </div>
       )}
+    </div>
+  );
+}
+
+function MeasurementSourcesGuide() {
+  return (
+    <div className="mb-3 rounded-2xl border border-sky-200 bg-sky-50/70 p-4 dark:border-sky-900 dark:bg-sky-950/20">
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-300">
+          <BarChart3 className="h-4 w-4" />
+        </div>
+        <div>
+          <div className="text-sm font-bold">Which measurement source do I need?</div>
+          <p className="mt-1 text-xs leading-relaxed text-sky-900/75 dark:text-sky-100/75">
+            These sources complement each other. One observes browser behavior; the other imports durable records owned by the platform.
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-xl border border-sky-200/80 bg-white/70 p-3 dark:border-sky-800 dark:bg-sky-950/30">
+          <div className="flex items-center gap-2 text-xs font-bold"><BarChart3 className="h-3.5 w-3.5 text-sky-500" /> GA4</div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            Analytics and reporting data: sessions, users, events, funnels, and attribution. Use it when you need to understand how people move through your site.
+          </p>
+        </div>
+        <div className="rounded-xl border border-sky-200/80 bg-white/70 p-3 dark:border-sky-800 dark:bg-sky-950/30">
+          <div className="flex items-center gap-2 text-xs font-bold"><MousePointerClick className="h-3.5 w-3.5 text-violet-500" /> Pixel</div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            Browser-side event tracking for ad optimization and conversion events. It observes activity in the browser; it is not a replacement for order or catalog imports.
+          </p>
+        </div>
+        <div className="rounded-xl border border-sky-200/80 bg-white/70 p-3 dark:border-sky-800 dark:bg-sky-950/30">
+          <div className="flex items-center gap-2 text-xs font-bold"><Server className="h-3.5 w-3.5 text-emerald-500" /> API connection</div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            Server-to-server imports of orders, products, customers, inventory, and ad metrics. Use it for durable platform-owned records and reconciliation.
+          </p>
+        </div>
+      </div>
+      <p className="mt-3 text-[11px] font-medium text-sky-900/70 dark:text-sky-100/70">
+        Recommended setup: connect your store API first, add GA4 for site behavior, and use pixels alongside your ad platforms for browser conversions.
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900 dark:bg-amber-950/20">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+          <div>
+            <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300">GA4 reporting import: not connected</div>
+            <p className="mt-0.5 text-[10px] leading-relaxed text-amber-900/70 dark:text-amber-100/70">
+              GA4 OAuth/property selection is not enabled in this version. Traffic reports stay empty unless CommercePulse has received real first-party events.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900 dark:bg-amber-950/20">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+          <div>
+            <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300">Storefront pixel: not installed</div>
+            <p className="mt-0.5 text-[10px] leading-relaxed text-amber-900/70 dark:text-amber-100/70">
+              A public storefront event endpoint and installation snippet are not enabled yet, so CommercePulse does not invent pixel sessions or conversions.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

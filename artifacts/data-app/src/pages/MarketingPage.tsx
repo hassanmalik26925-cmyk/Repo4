@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Megaphone, Palette, Target, Trophy } from "lucide-react";
 import { useGetInsightsSummary, useGetMarketingSummary, useListCampaigns } from "@workspace/api-client-react";
@@ -31,9 +31,10 @@ function roasColor(roas: number): string {
 interface MarketingPageProps {
   hasConnected?: boolean;
   onGoToSettings?: () => void;
+  focusId?: string;
 }
 
-export function MarketingPage({ hasConnected = true, onGoToSettings }: MarketingPageProps) {
+export function MarketingPage({ hasConnected = true, onGoToSettings, focusId }: MarketingPageProps) {
   const { range } = useDateRange();
   const { format: fmt, formatCompact } = useCurrency();
   const [sort, setSort] = useState<SortKey>("roas");
@@ -54,6 +55,10 @@ export function MarketingPage({ hasConnected = true, onGoToSettings }: Marketing
     }
     return 0;
   });
+  const focusedCampaign = useMemo(
+    () => (focusId ? sorted.find((campaign) => campaign.id === focusId) : undefined),
+    [focusId, sorted],
+  );
 
   return (
     <AnimatedPage>
@@ -72,6 +77,16 @@ export function MarketingPage({ hasConnected = true, onGoToSettings }: Marketing
         )}
 
         {hasConnected && <>
+         {focusId && (
+           <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50/70 px-3 py-2.5 text-xs dark:border-sky-900 dark:bg-sky-950/20">
+             <div className="font-bold text-sky-700 dark:text-sky-300">Reviewing marketing signal</div>
+             <div className="mt-0.5 text-sky-900/75 dark:text-sky-100/75">
+               {focusedCampaign
+                 ? `${focusedCampaign.name} is selected from the insight. Review its spend, revenue, conversions, and ROAS below.`
+                 : "The selected ad-set or creative is available in the synced performance highlights below."}
+             </div>
+           </div>
+         )}
         <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { label: "Ad Spend", value: s ? formatCompact(s.adSpend) : "-", accent: false, delay: 0.05 },

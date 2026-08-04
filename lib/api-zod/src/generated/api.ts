@@ -638,6 +638,23 @@ export const GetInsightsResponse = zod.object({
       description: zod.string(),
       metric: zod.string().optional(),
       action: zod.string().optional(),
+      actionTarget: zod
+        .object({
+          screen: zod
+            .enum([
+              "dashboard",
+              "orders",
+              "reports",
+              "marketing",
+              "products",
+              "settings",
+            ])
+            .optional(),
+          section: zod.string().optional(),
+          entityId: zod.string().optional(),
+          focus: zod.string().optional(),
+        })
+        .optional(),
     }),
   ),
 });
@@ -759,6 +776,23 @@ export const GetInsightsSummaryResponse = zod.object({
         description: zod.string(),
         metric: zod.string().optional(),
         action: zod.string().optional(),
+        actionTarget: zod
+          .object({
+            screen: zod
+              .enum([
+                "dashboard",
+                "orders",
+                "reports",
+                "marketing",
+                "products",
+                "settings",
+              ])
+              .optional(),
+            section: zod.string().optional(),
+            entityId: zod.string().optional(),
+            focus: zod.string().optional(),
+          })
+          .optional(),
       }),
     ),
   }),
