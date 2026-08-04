@@ -9,3 +9,4 @@ export * from "./notifications";
 export * from "./auditLogs";
 export * from "./resetTokens";
 export * from "./shippingRates";
+export * from "./trafficEvents";

@@ -31,6 +31,7 @@ import {
   useListCustomers,
   useListOrders,
   useListProducts,
+  useListTrafficEvents,
 } from "@workspace/api-client-react";
 import { ConnectFirst } from "../components/ConnectFirst";
 import { AnimatedCard, AnimatedList, AnimatedListItem, AnimatedPage } from "../components/AnimatedPage";
@@ -167,6 +168,10 @@ export function ReportsPage({ hasConnected = true, onGoToSettings }: ReportsPage
   const campaigns = useListCampaigns({ range }, { query: { enabled: hasConnected, queryKey: ["reports", "campaigns", range] } });
   const insightsSummary = useGetInsightsSummary({ range }, { query: { enabled: hasConnected, queryKey: ["reports", "insight-summary", range] } });
   const insights = useGetInsights({ range }, { query: { enabled: hasConnected, queryKey: ["reports", "insights", range] } });
+  const trafficEvents = useListTrafficEvents(
+    { limit: 500 },
+    { query: { enabled: hasConnected, queryKey: ["reports", "traffic-events"] } },
+  );
 
   const data = overview.data;
   const orderRows = orders.data?.orders ?? [];
@@ -179,6 +184,12 @@ export function ReportsPage({ hasConnected = true, onGoToSettings }: ReportsPage
     ...(insights.data?.insights ?? []),
     ...(summary?.highlights?.suggestions ?? []),
   ].filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index).slice(0, 5), [insights.data, summary]);
+  const trafficRows = trafficEvents.data?.events ?? [];
+  const trafficPageViews = trafficRows.filter((event) => event.eventName === "page_view").length;
+  const trafficSessions = useMemo(
+    () => new Set(trafficRows.map((event) => event.sessionId).filter(Boolean)).size,
+    [trafficRows],
+  );
   const sortedOrders = useMemo(() => [...orderRows].sort((a, b) => b[orderSort] - a[orderSort]), [orderRows, orderSort]);
   const repeatCustomers = customerRows.filter((customer) => customer.ordersCount > 1);
   const oneTimeCustomers = customerRows.filter((customer) => customer.ordersCount === 1);
@@ -358,8 +369,24 @@ export function ReportsPage({ hasConnected = true, onGoToSettings }: ReportsPage
 
             <section id="report-section-traffic" className="scroll-mt-4">
               <Card className="p-4">
-                <SectionHeading icon={<Activity className="h-4 w-4" />} eyebrow="08 / Traffic readiness" title="What is still missing" detail="A report is only useful when the measurement layer is explicit." />
-                <div className="grid gap-3 lg:grid-cols-2"><div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/20"><div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300"><Target className="h-4 w-4" /> Ad delivery metrics available</div><p className="mt-2 text-xs leading-relaxed text-emerald-800/75 dark:text-emerald-200/75">{marketing.data ? `${formatNumber(marketing.data.impressions)} impressions and ${formatNumber(marketing.data.clicks)} clicks are reported for this period.` : "Connect an ad platform to report impressions and clicks."}</p></div><TrafficEmpty title="Sessions and funnel conversion unavailable" /></div>
+                <SectionHeading icon={<Activity className="h-4 w-4" />} eyebrow="08 / Traffic readiness" title="What is measured" detail="Traffic metrics only reflect first-party events CommercePulse has actually received." />
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 dark:border-sky-900 dark:bg-sky-950/20">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Page views</div>
+                    <div className="mt-1 text-2xl font-bold text-sky-900 dark:text-sky-100">{trafficPageViews.toLocaleString()}</div>
+                    <p className="mt-1 text-xs text-sky-800/75 dark:text-sky-200/75">Authenticated workspace views recorded.</p>
+                  </div>
+                  <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-900 dark:bg-violet-950/20">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">Unique sessions</div>
+                    <div className="mt-1 text-2xl font-bold text-violet-900 dark:text-violet-100">{trafficSessions.toLocaleString()}</div>
+                    <p className="mt-1 text-xs text-violet-800/75 dark:text-violet-200/75">Derived only from first-party session IDs.</p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300"><Target className="h-4 w-4" /> Ad delivery metrics</div>
+                    <p className="mt-2 text-xs leading-relaxed text-emerald-800/75 dark:text-emerald-200/75">{marketing.data ? `${formatNumber(marketing.data.impressions)} impressions and ${formatNumber(marketing.data.clicks)} clicks are reported for this period.` : "Connect an ad platform to report impressions and clicks."}</p>
+                  </div>
+                </div>
+                <div className="mt-3"><TrafficEmpty title="Funnel conversion is not reported yet" /></div>
               </Card>
             </section>
 

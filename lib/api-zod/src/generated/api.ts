@@ -55,44 +55,69 @@ export const MeResponse = zod.object({
 });
 
 /**
- * @summary Get verified CommercePulse subscription status
+ * @summary Download the current account data export
  */
-export const GetBillingStatusResponse = zod.object({
-  hasAccess: zod.boolean(),
-  status: zod.string(),
-  planName: zod.string(),
-  price: zod.number(),
-  currency: zod.string(),
-  renewalEnd: zod.string().nullish(),
-  cancelAtPeriodEnd: zod.boolean(),
-  manageUrl: zod.string().nullish(),
-  membershipId: zod.string().nullish(),
+export const ExportAccountDataResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+/**
+ * @summary Record a first-party traffic event
+ */
+export const createTrafficEventBodyEventNameMax = 80;
+
+export const createTrafficEventBodySessionIdMax = 160;
+
+export const createTrafficEventBodyPagePathMax = 500;
+
+export const createTrafficEventBodySourceMax = 120;
+
+export const createTrafficEventBodyMediumMax = 120;
+
+export const createTrafficEventBodyCampaignMax = 160;
+
+export const CreateTrafficEventBody = zod.object({
+  eventName: zod.string().min(1).max(createTrafficEventBodyEventNameMax),
+  sessionId: zod.string().max(createTrafficEventBodySessionIdMax).optional(),
+  pagePath: zod.string().max(createTrafficEventBodyPagePathMax).optional(),
+  source: zod.string().max(createTrafficEventBodySourceMax).optional(),
+  medium: zod.string().max(createTrafficEventBodyMediumMax).optional(),
+  campaign: zod.string().max(createTrafficEventBodyCampaignMax).optional(),
+  value: zod.number().optional(),
+  occurredAt: zod.coerce.date().optional(),
+  metadata: zod.record(zod.string(), zod.unknown()).optional(),
 });
 
 /**
- * @summary Create a hosted Whop checkout
+ * @summary List first-party traffic events
  */
-export const CreateBillingCheckoutBody = zod.object({
-  redirectUrl: zod.string().url().optional(),
+export const listTrafficEventsQueryLimitDefault = 100;
+export const listTrafficEventsQueryLimitMax = 500;
+
+export const ListTrafficEventsQueryParams = zod.object({
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(listTrafficEventsQueryLimitMax)
+    .default(listTrafficEventsQueryLimitDefault),
 });
 
-export const CreateBillingCheckoutResponse = zod.object({
-  purchaseUrl: zod.string().url(),
-});
-
-/**
- * @summary Schedule the current subscription to cancel at period end
- */
-export const CancelBillingSubscriptionResponse = zod.object({
-  hasAccess: zod.boolean(),
-  status: zod.string(),
-  planName: zod.string(),
-  price: zod.number(),
-  currency: zod.string(),
-  renewalEnd: zod.string().nullish(),
-  cancelAtPeriodEnd: zod.boolean(),
-  manageUrl: zod.string().nullish(),
-  membershipId: zod.string().nullish(),
+export const ListTrafficEventsResponse = zod.object({
+  events: zod.array(
+    zod.object({
+      id: zod.string(),
+      eventName: zod.string(),
+      sessionId: zod.string().nullish(),
+      pagePath: zod.string().nullish(),
+      source: zod.string().nullish(),
+      medium: zod.string().nullish(),
+      campaign: zod.string().nullish(),
+      value: zod.number().nullish(),
+      metadata: zod.record(zod.string(), zod.unknown()).nullish(),
+      occurredAt: zod.coerce.date(),
+    }),
+  ),
 });
 
 /**
@@ -851,9 +876,6 @@ export const ListAdminUsersResponse = zod.object({
       name: zod.string(),
       role: zod.string(),
       currency: zod.string().optional(),
-      billingStatus: zod.string().optional(),
-      billingRenewalEnd: zod.string().nullish(),
-      billingCancelAtPeriodEnd: zod.string().optional(),
       createdAt: zod.string().optional(),
     }),
   ),

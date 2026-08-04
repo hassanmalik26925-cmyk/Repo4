@@ -110,7 +110,7 @@ export function LandingPage() {
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/register" className="flex items-center gap-2 rounded-full bg-primary text-white px-8 py-4 text-base font-bold transition-all hover:bg-primary/90 hover:scale-105 shadow-[0_0_40px_-10px_rgba(79,70,229,0.5)] active:scale-95 w-full sm:w-auto justify-center" data-testid="btn-hero-cta">
-                Start your free trial <ArrowRight className="h-5 w-5" />
+                Create your free workspace <ArrowRight className="h-5 w-5" />
               </Link>
               <Link href="/login" className="flex items-center gap-2 rounded-full bg-white/10 text-white px-8 py-4 text-base font-bold transition-all hover:bg-white/20 active:scale-95 w-full sm:w-auto justify-center backdrop-blur-md" data-testid="btn-hero-login">
                 Sign In
@@ -476,40 +476,40 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* PRICING HINT */}
+        {/* CURRENT ACCESS */}
         <section className="py-24 bg-muted/30 border-t border-border">
           <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center">
-            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">Simple, transparent pricing.</h2>
-            <p className="text-xl text-muted-foreground mb-16">Start with a 15-day free trial, then pay $9/month. Scale when you're ready.</p>
+            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">Start with a clear readout.</h2>
+            <p className="text-xl text-muted-foreground mb-16">Create a workspace, connect your store, and validate your growth data before you decide how to scale.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
               {/* Starter */}
               <div className="bg-background rounded-3xl p-10 border border-border shadow-sm flex flex-col">
-                <h3 className="text-2xl font-bold mb-2">Starter</h3>
-                <p className="text-muted-foreground mb-8">Perfect for growing brands hitting their stride.</p>
+                <h3 className="text-2xl font-bold mb-2">Commerce workspace</h3>
+                <p className="text-muted-foreground mb-8">Everything you need to connect data and understand profitable growth.</p>
                 <ul className="space-y-4 mb-10 flex-1 font-medium">
-                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Up to 5,000 orders/mo</span></li>
-                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>3 Integrations</span></li>
-                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Daily Data Sync</span></li>
+                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Connect commerce and ad platforms</span></li>
+                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Reports, profitability, and retention</span></li>
+                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Truthful sync and traffic readiness states</span></li>
                 </ul>
                 <Link href="/register" className="w-full block py-4 text-center rounded-xl border-2 border-border font-bold hover:border-primary hover:text-primary transition-colors" data-testid="btn-pricing-starter">
-                  Start 15-day free trial
+                  Create workspace
                 </Link>
               </div>
 
               {/* Pro */}
               <div className="bg-[#0a0a0f] text-white rounded-3xl p-10 border border-border shadow-2xl flex flex-col relative overflow-hidden">
                 <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-4 py-1.5 rounded-bl-xl uppercase tracking-wider">Most Popular</div>
-                <h3 className="text-2xl font-bold mb-2">Pro</h3>
-                <p className="text-white/60 mb-8">For established operators who need everything.</p>
+                <h3 className="text-2xl font-bold mb-2">Built to scale</h3>
+                <p className="text-white/60 mb-8">A foundation for larger stores, deeper integrations, and future operating workflows.</p>
                 <ul className="space-y-4 mb-10 flex-1 font-medium">
-                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Unlimited orders</span></li>
-                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>All Integrations</span></li>
-                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>15-min Data Sync</span></li>
-                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Custom LTV Models</span></li>
+                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Connector-ready architecture</span></li>
+                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>First-party traffic events</span></li>
+                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Account export and deletion controls</span></li>
+                  <li className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-primary" /> <span>Operational sync safeguards</span></li>
                 </ul>
                 <Link href="/register" className="w-full block py-4 text-center rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20" data-testid="btn-pricing-pro">
-                  Start 15-day free trial
+                  Start building
                 </Link>
               </div>
             </div>
@@ -521,7 +521,7 @@ export function LandingPage() {
           <div className="max-w-3xl mx-auto space-y-10">
             <h2 className="text-5xl md:text-7xl font-extrabold tracking-tight text-balance leading-tight">Your command center is ready.</h2>
             <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-primary text-white px-10 py-5 text-lg font-bold transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(79,70,229,0.5)] active:scale-95" data-testid="btn-final-cta">
-              Start your 15-day free trial <ArrowRight className="h-5 w-5" />
+              Create your free workspace <ArrowRight className="h-5 w-5" />
             </Link>
           </div>
         </section>

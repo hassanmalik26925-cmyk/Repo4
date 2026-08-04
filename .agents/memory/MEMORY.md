@@ -9,3 +9,5 @@
 - [Billing membership lookup](billing-membership-lookup.md) — Whop membership access checks must paginate and prefer any active matching membership; inactive cache TTL stays short after checkout.
 - [Billing route boundaries](billing-route-boundaries.md) — paid-access middleware must be scoped only to analytics paths; onboarding, settings, integrations, and checkout stay accessible before payment.
 - [Whop webhook permissions](whop-webhook-permissions.md) — the connected Whop account can manage checkout but lacks company read scope needed to create or list webhook endpoints.
+- [Free commercial mode](free-commercial-mode.md) — billing and Whop are removed from product/API/dependencies; legacy billing columns remain inert for compatibility.
+- [Managed artifact builds](managed-artifact-builds.md) — Vite builds require each artifact's workflow-injected PORT and BASE_PATH values when run manually.

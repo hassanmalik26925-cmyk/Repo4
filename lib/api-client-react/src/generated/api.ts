@@ -23,18 +23,16 @@ import type {
   AuditLogResponse,
   AuthResponse,
   AuthUser,
-  BillingCheckoutResponse,
-  BillingStatus,
   Campaign,
   ChannelMetric,
   ConnectIntegrationBody,
-  CreateBillingCheckoutBody,
   CreateProductBody,
   CreateShippingRateBody,
   Customer,
   DashboardOverview,
   ErrorResponse,
   ExchangeRates,
+  ExportAccountData200,
   ForgotPasswordBody,
   GetDashboardOverviewParams,
   GetInsightsParams,
@@ -54,6 +52,8 @@ import type {
   ListNotificationsParams,
   ListOrdersParams,
   ListProductsParams,
+  ListTrafficEvents200,
+  ListTrafficEventsParams,
   LoginBody,
   MarketingSummary,
   NotificationsResponse,
@@ -70,6 +70,8 @@ import type {
   Settings,
   ShippingRate,
   SuccessResponse,
+  TrafficEventBody,
+  TrafficEventResponse,
   UpdateProductBody,
   UpdateSettingsBody,
   UpdateShippingRateBody,
@@ -394,31 +396,31 @@ export function useMe<
 }
 
 /**
- * @summary Get verified CommercePulse subscription status
+ * @summary Download the current account data export
  */
-export const getGetBillingStatusUrl = () => {
-  return `/api/billing/status`;
+export const getExportAccountDataUrl = () => {
+  return `/api/account/export`;
 };
 
-export const getBillingStatus = async (
+export const exportAccountData = async (
   options?: RequestInit,
-): Promise<BillingStatus> => {
-  return customFetch<BillingStatus>(getGetBillingStatusUrl(), {
+): Promise<ExportAccountData200> => {
+  return customFetch<ExportAccountData200>(getExportAccountDataUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetBillingStatusQueryKey = () => {
-  return [`/api/billing/status`] as const;
+export const getExportAccountDataQueryKey = () => {
+  return [`/api/account/export`] as const;
 };
 
-export const getGetBillingStatusQueryOptions = <
-  TData = Awaited<ReturnType<typeof getBillingStatus>>,
+export const getExportAccountDataQueryOptions = <
+  TData = Awaited<ReturnType<typeof exportAccountData>>,
   TError = ErrorType<void>,
 >(options?: {
   query?: UseQueryOptions<
-    Awaited<ReturnType<typeof getBillingStatus>>,
+    Awaited<ReturnType<typeof exportAccountData>>,
     TError,
     TData
   >;
@@ -426,40 +428,40 @@ export const getGetBillingStatusQueryOptions = <
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetBillingStatusQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getExportAccountDataQueryKey();
 
   const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getBillingStatus>>
-  > = ({ signal }) => getBillingStatus({ signal, ...requestOptions });
+    Awaited<ReturnType<typeof exportAccountData>>
+  > = ({ signal }) => exportAccountData({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getBillingStatus>>,
+    Awaited<ReturnType<typeof exportAccountData>>,
     TError,
     TData
   > & { queryKey: QueryKey };
 };
 
-export type GetBillingStatusQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getBillingStatus>>
+export type ExportAccountDataQueryResult = NonNullable<
+  Awaited<ReturnType<typeof exportAccountData>>
 >;
-export type GetBillingStatusQueryError = ErrorType<void>;
+export type ExportAccountDataQueryError = ErrorType<void>;
 
 /**
- * @summary Get verified CommercePulse subscription status
+ * @summary Download the current account data export
  */
 
-export function useGetBillingStatus<
-  TData = Awaited<ReturnType<typeof getBillingStatus>>,
+export function useExportAccountData<
+  TData = Awaited<ReturnType<typeof exportAccountData>>,
   TError = ErrorType<void>,
 >(options?: {
   query?: UseQueryOptions<
-    Awaited<ReturnType<typeof getBillingStatus>>,
+    Awaited<ReturnType<typeof exportAccountData>>,
     TError,
     TData
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetBillingStatusQueryOptions(options);
+  const queryOptions = getExportAccountDataQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -469,42 +471,121 @@ export function useGetBillingStatus<
 }
 
 /**
- * @summary Create a hosted Whop checkout
+ * @summary Permanently delete the current account and its data
  */
-export const getCreateBillingCheckoutUrl = () => {
-  return `/api/billing/checkout`;
+export const getDeleteAccountUrl = () => {
+  return `/api/account`;
 };
 
-export const createBillingCheckout = async (
-  createBillingCheckoutBody?: CreateBillingCheckoutBody,
+export const deleteAccount = async (options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getDeleteAccountUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAccountMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAccount>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAccount>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["deleteAccount"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAccount>>,
+    void
+  > = () => {
+    return deleteAccount(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAccount>>
+>;
+
+export type DeleteAccountMutationError = ErrorType<void>;
+
+/**
+ * @summary Permanently delete the current account and its data
+ */
+export const useDeleteAccount = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAccount>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAccount>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDeleteAccountMutationOptions(options));
+};
+
+/**
+ * @summary Record a first-party traffic event
+ */
+export const getCreateTrafficEventUrl = () => {
+  return `/api/traffic/events`;
+};
+
+export const createTrafficEvent = async (
+  trafficEventBody: TrafficEventBody,
   options?: RequestInit,
-): Promise<BillingCheckoutResponse> => {
-  return customFetch<BillingCheckoutResponse>(getCreateBillingCheckoutUrl(), {
+): Promise<TrafficEventResponse> => {
+  return customFetch<TrafficEventResponse>(getCreateTrafficEventUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(createBillingCheckoutBody),
+    body: JSON.stringify(trafficEventBody),
   });
 };
 
-export const getCreateBillingCheckoutMutationOptions = <
+export const getCreateTrafficEventMutationOptions = <
   TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createBillingCheckout>>,
+    Awaited<ReturnType<typeof createTrafficEvent>>,
     TError,
-    { data: BodyType<CreateBillingCheckoutBody> },
+    { data: BodyType<TrafficEventBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof createBillingCheckout>>,
+  Awaited<ReturnType<typeof createTrafficEvent>>,
   TError,
-  { data: BodyType<CreateBillingCheckoutBody> },
+  { data: BodyType<TrafficEventBody> },
   TContext
 > => {
-  const mutationKey = ["createBillingCheckout"];
+  const mutationKey = ["createTrafficEvent"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -514,127 +595,142 @@ export const getCreateBillingCheckoutMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof createBillingCheckout>>,
-    { data: BodyType<CreateBillingCheckoutBody> }
+    Awaited<ReturnType<typeof createTrafficEvent>>,
+    { data: BodyType<TrafficEventBody> }
   > = (props) => {
     const { data } = props ?? {};
 
-    return createBillingCheckout(data, requestOptions);
+    return createTrafficEvent(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type CreateBillingCheckoutMutationResult = NonNullable<
-  Awaited<ReturnType<typeof createBillingCheckout>>
+export type CreateTrafficEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createTrafficEvent>>
 >;
-export type CreateBillingCheckoutMutationBody =
-  BodyType<CreateBillingCheckoutBody>;
-export type CreateBillingCheckoutMutationError = ErrorType<void>;
+export type CreateTrafficEventMutationBody = BodyType<TrafficEventBody>;
+export type CreateTrafficEventMutationError = ErrorType<void>;
 
 /**
- * @summary Create a hosted Whop checkout
+ * @summary Record a first-party traffic event
  */
-export const useCreateBillingCheckout = <
+export const useCreateTrafficEvent = <
   TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createBillingCheckout>>,
+    Awaited<ReturnType<typeof createTrafficEvent>>,
     TError,
-    { data: BodyType<CreateBillingCheckoutBody> },
+    { data: BodyType<TrafficEventBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof createBillingCheckout>>,
+  Awaited<ReturnType<typeof createTrafficEvent>>,
   TError,
-  { data: BodyType<CreateBillingCheckoutBody> },
+  { data: BodyType<TrafficEventBody> },
   TContext
 > => {
-  return useMutation(getCreateBillingCheckoutMutationOptions(options));
+  return useMutation(getCreateTrafficEventMutationOptions(options));
 };
 
 /**
- * @summary Schedule the current subscription to cancel at period end
+ * @summary List first-party traffic events
  */
-export const getCancelBillingSubscriptionUrl = () => {
-  return `/api/billing/cancel`;
+export const getListTrafficEventsUrl = (params?: ListTrafficEventsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/traffic/events?${stringifiedParams}`
+    : `/api/traffic/events`;
 };
 
-export const cancelBillingSubscription = async (
+export const listTrafficEvents = async (
+  params?: ListTrafficEventsParams,
   options?: RequestInit,
-): Promise<BillingStatus> => {
-  return customFetch<BillingStatus>(getCancelBillingSubscriptionUrl(), {
+): Promise<ListTrafficEvents200> => {
+  return customFetch<ListTrafficEvents200>(getListTrafficEventsUrl(params), {
     ...options,
-    method: "POST",
+    method: "GET",
   });
 };
 
-export const getCancelBillingSubscriptionMutationOptions = <
-  TError = ErrorType<void>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof cancelBillingSubscription>>,
-    TError,
-    void,
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof cancelBillingSubscription>>,
-  TError,
-  void,
-  TContext
-> => {
-  const mutationKey = ["cancelBillingSubscription"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof cancelBillingSubscription>>,
-    void
-  > = () => {
-    return cancelBillingSubscription(requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
+export const getListTrafficEventsQueryKey = (
+  params?: ListTrafficEventsParams,
+) => {
+  return [`/api/traffic/events`, ...(params ? [params] : [])] as const;
 };
 
-export type CancelBillingSubscriptionMutationResult = NonNullable<
-  Awaited<ReturnType<typeof cancelBillingSubscription>>
->;
+export const getListTrafficEventsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listTrafficEvents>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListTrafficEventsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTrafficEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-export type CancelBillingSubscriptionMutationError = ErrorType<void>;
+  const queryKey =
+    queryOptions?.queryKey ?? getListTrafficEventsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listTrafficEvents>>
+  > = ({ signal }) => listTrafficEvents(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listTrafficEvents>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListTrafficEventsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listTrafficEvents>>
+>;
+export type ListTrafficEventsQueryError = ErrorType<unknown>;
 
 /**
- * @summary Schedule the current subscription to cancel at period end
+ * @summary List first-party traffic events
  */
-export const useCancelBillingSubscription = <
-  TError = ErrorType<void>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof cancelBillingSubscription>>,
-    TError,
-    void,
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof cancelBillingSubscription>>,
-  TError,
-  void,
-  TContext
-> => {
-  return useMutation(getCancelBillingSubscriptionMutationOptions(options));
-};
+
+export function useListTrafficEvents<
+  TData = Awaited<ReturnType<typeof listTrafficEvents>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListTrafficEventsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTrafficEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListTrafficEventsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary KPI overview

@@ -5,13 +5,11 @@ import {
   GetRevenueByPlatformResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { requirePaidAccess } from "../middlewares/requirePaidAccess";
 import { dateWindow, parseRange, pctChange } from "../lib/dateRange";
 import { RevenueService } from "../services/RevenueService";
 
 const router: IRouter = Router();
 router.use(requireAuth);
-router.use("/dashboard", requirePaidAccess);
 
 router.get("/dashboard/overview", async (req, res): Promise<void> => {
   const userId = req.user!.sub;

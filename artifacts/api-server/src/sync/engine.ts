@@ -15,6 +15,7 @@ import { OrderService } from "../services/OrderService";
 import { logger } from "../lib/logger";
 
 const RETRY_LIMIT = 3;
+const inFlightSyncs = new Set<string>();
 
 /**
  * Delete all seed/demo rows for a user. Called the first time a real
@@ -93,6 +94,12 @@ export async function runSyncFor(
   userId: string,
   platform: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  const syncKey = `${userId}:${platform}`;
+  if (inFlightSyncs.has(syncKey)) {
+    return { ok: false, error: "A sync is already running for this integration." };
+  }
+  inFlightSyncs.add(syncKey);
+  try {
   const [integration] = await db
     .select()
     .from(integrationsTable)
@@ -103,10 +110,12 @@ export async function runSyncFor(
       ),
     );
   if (!integration || integration.status !== "connected") {
+    inFlightSyncs.delete(syncKey);
     return { ok: false, error: "Not connected" };
   }
   const adapter = getAdapter(platform);
   if (!adapter || !integration.credentials) {
+    inFlightSyncs.delete(syncKey);
     return { ok: false, error: "No adapter or credentials" };
   }
   const creds = decryptJson<Record<string, unknown>>(integration.credentials);
@@ -149,6 +158,7 @@ export async function runSyncFor(
         logger.error({ err, userId }, "Receipt send failed after sync"),
       );
       logger.info({ userId, platform, result: r }, "Sync ok");
+      inFlightSyncs.delete(syncKey);
       return { ok: true };
     } catch (err) {
       lastErr = err;
@@ -169,7 +179,12 @@ export async function runSyncFor(
     entityType: "integration",
     entityId: integration.id,
   });
+  inFlightSyncs.delete(syncKey);
   return { ok: false, error: msg };
+  } catch (err) {
+    inFlightSyncs.delete(syncKey);
+    throw err;
+  }
 }
 
 let timer: NodeJS.Timeout | null = null;

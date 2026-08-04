@@ -34,20 +34,48 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
-export interface BillingStatus {
-  hasAccess: boolean;
-  status: string;
-  planName: string;
-  price: number;
-  currency: string;
-  renewalEnd?: string | null;
-  cancelAtPeriodEnd: boolean;
-  manageUrl?: string | null;
-  membershipId?: string | null;
+export type TrafficEventBodyMetadata = { [key: string]: unknown };
+
+export interface TrafficEventBody {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  eventName: string;
+  /** @maxLength 160 */
+  sessionId?: string;
+  /** @maxLength 500 */
+  pagePath?: string;
+  /** @maxLength 120 */
+  source?: string;
+  /** @maxLength 120 */
+  medium?: string;
+  /** @maxLength 160 */
+  campaign?: string;
+  value?: number;
+  occurredAt?: string;
+  metadata?: TrafficEventBodyMetadata;
 }
 
-export interface BillingCheckoutResponse {
-  purchaseUrl: string;
+export interface TrafficEventResponse {
+  id: string;
+  eventName: string;
+  occurredAt: string;
+}
+
+export type TrafficEventMetadata = { [key: string]: unknown } | null;
+
+export interface TrafficEvent {
+  id: string;
+  eventName: string;
+  sessionId?: string | null;
+  pagePath?: string | null;
+  source?: string | null;
+  medium?: string | null;
+  campaign?: string | null;
+  value?: number | null;
+  metadata?: TrafficEventMetadata;
+  occurredAt: string;
 }
 
 export interface RegisterBody {
@@ -471,9 +499,6 @@ export interface AdminUser {
   name: string;
   role: string;
   currency?: string;
-  billingStatus?: string;
-  billingRenewalEnd?: string | null;
-  billingCancelAtPeriodEnd?: string;
   createdAt?: string;
 }
 
@@ -532,8 +557,18 @@ export const RangeParamParameter = {
   "90d": "90d",
 } as const;
 
-export type CreateBillingCheckoutBody = {
-  redirectUrl?: string;
+export type ExportAccountData200 = { [key: string]: unknown };
+
+export type ListTrafficEventsParams = {
+  /**
+   * @minimum 1
+   * @maximum 500
+   */
+  limit?: number;
+};
+
+export type ListTrafficEvents200 = {
+  events: TrafficEvent[];
 };
 
 export type GetDashboardOverviewParams = {

@@ -19,8 +19,7 @@ import { SetupPage } from "./pages/SetupPage";
 import { ToastContainer } from "./components/ToastContainer";
 import { useSSE } from "./hooks/useSSE";
 import { LegalPage } from "./pages/LegalPage";
-import { useBillingStatus } from "./hooks/useBilling";
-import { BillingRequired } from "./components/BillingRequired";
+import { useTrafficTracking } from "./hooks/useTrafficTracking";
 
 function NoIntegrationScreen({ onGoToSettings }: { onGoToSettings: () => void }) {
   return (
@@ -58,9 +57,9 @@ function AuthenticatedApp() {
   const [screen, setScreen] = useState<Screen>("dashboard");
   const integrations = useListIntegrations();
   const onboardingStatus = useGetOnboardingStatus();
-  const billing = useBillingStatus();
   const { user } = useAuth();
   useSSE();
+  useTrafficTracking();
 
   if (onboardingStatus.isLoading) {
     return (
@@ -73,8 +72,6 @@ function AuthenticatedApp() {
   if (onboardingStatus.data?.onboarded === false) {
     return <SetupPage onComplete={() => onboardingStatus.refetch()} />;
   }
-
-  const hasPaidAccess = !!user?.isDemo || billing.data?.hasAccess === true;
 
   // Demo accounts always show full sample data, regardless of whether any
   // integration is currently marked connected/disconnected in Settings.
@@ -102,13 +99,6 @@ function AuthenticatedApp() {
     </AnimatePresence>
   );
 
-  const gatedScreen =
-    screen !== "settings" && !hasPaidAccess ? (
-      <BillingRequired onGoToSettings={() => setScreen("settings")} />
-    ) : (
-      dataScreen
-    );
-
   return (
     <CurrencyProvider>
       <div className="min-h-screen bg-background text-foreground">
@@ -134,7 +124,7 @@ function AuthenticatedApp() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                {gatedScreen}
+                {dataScreen}
               </motion.div>
             )}
           </AnimatePresence>
