@@ -630,6 +630,10 @@ ${
                   : `Active at $${billing.data.price}/month${billing.data.renewalEnd ? ` · renews ${new Date(billing.data.renewalEnd).toLocaleDateString()}` : ""}.`
                 : "Start with a 15-day free trial, then continue for $9/month to unlock live analytics, performance rankings, and actionable insights."}
             </p>
+            <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
+              Customer subscriptions and seller payouts are handled securely by Whop.
+              Manage your earnings from the Whop Dashboard.
+            </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 border-t border-[hsl(var(--card-border))] px-4 py-3">
@@ -668,6 +672,17 @@ ${
               Billing status is temporarily unavailable.
             </span>
           )}
+        </div>
+        <div className="border-t border-[hsl(var(--card-border))] px-4 py-3">
+          <a
+            href="https://whop.com/dashboard"
+            target="_blank"
+            rel="noreferrer"
+            data-testid="link-whop-dashboard"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:underline dark:text-sky-400"
+          >
+            Open Whop Dashboard <ExternalLink className="h-3 w-3" />
+          </a>
         </div>
       </div>
 

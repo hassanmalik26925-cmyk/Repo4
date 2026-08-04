@@ -188,6 +188,65 @@ export function ReportsPage({ hasConnected = true, onGoToSettings }: ReportsPage
   const ordersError = orders.isError;
   const reportError = overview.isError || trend.isError;
 
+  function downloadCsvReport() {
+    const rows: unknown[][] = [
+      ["Section", "Metric", "Value", "Context"],
+      ["Overview", "Revenue", data?.revenue.value ?? "", RANGE_LABELS[range]],
+      ["Overview", "Profit", data?.profit.value ?? "", RANGE_LABELS[range]],
+      ["Overview", "Orders", data?.ordersCount.value ?? "", RANGE_LABELS[range]],
+      ["Overview", "Margin", data?.margin ?? "", RANGE_LABELS[range]],
+      ["Overview", "ROAS", data?.roas.value ?? "", RANGE_LABELS[range]],
+      ["Overview", "Average order value", data?.avgOrderValue.value ?? "", RANGE_LABELS[range]],
+      ...orderRows.map((order) => [
+        "Orders",
+        order.orderNumber,
+        order.totalAmount,
+        `${order.platform} · ${order.status} · ${order.orderedAt}`,
+      ]),
+      ...productRows.map((product) => [
+        "Products",
+        product.name,
+        product.revenue,
+        `${product.unitsSold} units · ${product.margin}% margin`,
+      ]),
+      ...campaignRows.map((campaign) => [
+        "Campaigns",
+        campaign.name,
+        campaign.revenue,
+        `${campaign.channel} · ${campaign.roas}x ROAS · ${campaign.spend} spend`,
+      ]),
+      ...customerRows.map((customer) => [
+        "Customers",
+        customer.name,
+        customer.totalSpent,
+        `${customer.ordersCount} orders · ${customer.email || "No email"}`,
+      ]),
+      ...platformRows.map((platform) => [
+        "Platforms",
+        platform.platform,
+        platform.revenue,
+        "Revenue by connected platform",
+      ]),
+    ];
+    const csv = rows
+      .map((row) =>
+        row
+          .map((value) => {
+            const text = value == null ? "" : String(value);
+            return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+          })
+          .join(","),
+      )
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `commercepulse-report-${range}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   const jumpTo = (section: ReportSection) => {
     setActiveSection(section);
     document.getElementById(`report-section-${section}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -307,7 +366,7 @@ export function ReportsPage({ hasConnected = true, onGoToSettings }: ReportsPage
             <section id="report-section-exports" className="scroll-mt-4">
               <Card className="p-4">
                 <SectionHeading icon={<Download className="h-4 w-4" />} eyebrow="09 / Exports & saved reports" title="Make the readout repeatable" detail="Use this workspace as the source of truth for weekly operating reviews." />
-                <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-[hsl(var(--card-border))] bg-muted/20 p-4"><div className="flex items-center gap-2 text-sm font-semibold"><Download className="h-4 w-4 text-sky-500" /> Export guidance</div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">There is no export endpoint connected in the current app. For a clean handoff, keep the date range selected, expand the sections you need, and use your browser’s print or save-to-file flow.</p><button type="button" onClick={() => window.print()} data-testid="button-print-report" className="mt-3 inline-flex items-center gap-2 rounded-lg bg-sky-500 px-3 py-2 text-xs font-bold text-white hover-elevate"><Download className="h-3.5 w-3.5" /> Print this report</button></div><div className="rounded-xl border border-[hsl(var(--card-border))] bg-muted/20 p-4"><div className="flex items-center gap-2 text-sm font-semibold"><RefreshCw className="h-4 w-4 text-emerald-500" /> Saved report guidance</div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Saved report schedules are not enabled yet. Bookmark this workspace and keep the shared date range aligned for your recurring review.</p><button type="button" onClick={() => onGoToSettings?.()} data-testid="button-report-settings" className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[hsl(var(--card-border))] px-3 py-2 text-xs font-bold hover-elevate"><ExternalLink className="h-3.5 w-3.5" /> Review connections</button></div></div>
+                <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-[hsl(var(--card-border))] bg-muted/20 p-4"><div className="flex items-center gap-2 text-sm font-semibold"><Download className="h-4 w-4 text-sky-500" /> Export this readout</div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Download the live rows currently returned for this date range, or print the full report for a formatted handoff.</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={downloadCsvReport} data-testid="button-download-report-csv" className="inline-flex items-center gap-2 rounded-lg bg-sky-500 px-3 py-2 text-xs font-bold text-white hover-elevate"><Download className="h-3.5 w-3.5" /> Download CSV</button><button type="button" onClick={() => window.print()} data-testid="button-print-report" className="inline-flex items-center gap-2 rounded-lg border border-[hsl(var(--card-border))] px-3 py-2 text-xs font-bold hover-elevate"><Download className="h-3.5 w-3.5" /> Print report</button></div></div><div className="rounded-xl border border-[hsl(var(--card-border))] bg-muted/20 p-4"><div className="flex items-center gap-2 text-sm font-semibold"><RefreshCw className="h-4 w-4 text-emerald-500" /> Saved report guidance</div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Saved report schedules are not enabled yet. Bookmark this workspace and keep the shared date range aligned for your recurring review.</p><button type="button" onClick={() => onGoToSettings?.()} data-testid="button-report-settings" className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[hsl(var(--card-border))] px-3 py-2 text-xs font-bold hover-elevate"><ExternalLink className="h-3.5 w-3.5" /> Review connections</button></div></div>
               </Card>
             </section>
 
