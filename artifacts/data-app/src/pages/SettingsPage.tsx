@@ -28,6 +28,8 @@ import {
   Check,
   Printer,
   Link,
+  CreditCard,
+  ExternalLink,
 } from "lucide-react";
 import {
   useGetSettings,
@@ -57,6 +59,11 @@ import { formatRelative } from "../lib/format";
 import { friendlyError } from "../lib/errors";
 import { ShippingRatesSection } from "../components/ShippingRatesSection";
 import { ProductCostPricingSection } from "../components/ProductCostPricingSection";
+import {
+  useBillingStatus,
+  useCancelBillingSubscription,
+  useStartBillingCheckout,
+} from "../hooks/useBilling";
 
 // ── Platform icon / colour maps ───────────────────────────────────────────────
 
@@ -258,6 +265,9 @@ export function SettingsPage() {
     { range },
     { query: { enabled: hasConnected, queryKey: ["settings", "overview", range] } },
   );
+  const billing = useBillingStatus();
+  const checkout = useStartBillingCheckout();
+  const cancelSubscription = useCancelBillingSubscription();
   const productsForReport = useListProducts(
     { range },
     { query: { enabled: false, queryKey: ["report", "products", range] } },
@@ -287,6 +297,21 @@ export function SettingsPage() {
   const [showRefreshPicker, setShowRefreshPicker] = useState(false);
   const [showRangePicker, setShowRangePicker] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+
+  function handleStartCheckout() {
+    checkout.mutate(undefined, {
+      onSuccess: ({ purchaseUrl }) => window.location.assign(purchaseUrl),
+      onError: (error) => toast(friendlyError(error)),
+    });
+  }
+
+  function handleCancelSubscription() {
+    if (!window.confirm("Cancel at the end of your current billing period?")) return;
+    cancelSubscription.mutate(undefined, {
+      onSuccess: () => toast("Subscription cancellation scheduled."),
+      onError: (error) => toast(friendlyError(error)),
+    });
+  }
 
   // Sync from API
   useEffect(() => {
@@ -572,6 +597,78 @@ ${
             </button>
           </form>
         )}
+      </div>
+
+      {/* ── Billing ────────────────────────────────────────────────── */}
+      <SectionLabel label="Billing" />
+      <div className="mb-5 overflow-hidden rounded-2xl border border-[hsl(var(--card-border))] bg-card">
+        <div className="flex items-start gap-3 px-4 py-4">
+          <SettingIcon bg="#E0F2FE" fg="#0284C7">
+            <CreditCard className="h-4 w-4" />
+          </SettingIcon>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold">CommercePulse Analytics</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                  billing.data?.hasAccess
+                    ? "bg-emerald-500/10 text-emerald-600"
+                    : "bg-amber-500/10 text-amber-600"
+                }`}
+              >
+                {billing.data?.status === "demo"
+                  ? "Demo access"
+                  : billing.data?.hasAccess
+                    ? billing.data.status
+                    : "Subscription required"}
+              </span>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {billing.data?.hasAccess
+                ? billing.data.cancelAtPeriodEnd
+                  ? `Access ends ${billing.data.renewalEnd ? new Date(billing.data.renewalEnd).toLocaleDateString() : "after this period"}.`
+                  : `Active at $${billing.data.price}/month${billing.data.renewalEnd ? ` · renews ${new Date(billing.data.renewalEnd).toLocaleDateString()}` : ""}.`
+                : "Unlock live analytics, performance rankings, and actionable insights for $9/month."}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 border-t border-[hsl(var(--card-border))] px-4 py-3">
+          {!billing.data?.hasAccess && (
+            <button
+              onClick={handleStartCheckout}
+              disabled={checkout.isPending || billing.isLoading}
+              className="rounded-full bg-sky-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-sky-600 disabled:opacity-50"
+            >
+              {checkout.isPending ? "Opening checkout…" : "Subscribe for $9/month"}
+            </button>
+          )}
+          {billing.data?.hasAccess && billing.data.manageUrl && (
+            <a
+              href={billing.data.manageUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-semibold transition hover:bg-accent"
+            >
+              Manage subscription <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+          {billing.data?.hasAccess &&
+            !billing.data.cancelAtPeriodEnd &&
+            billing.data.status !== "demo" && (
+              <button
+                onClick={handleCancelSubscription}
+                disabled={cancelSubscription.isPending}
+                className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:hover:bg-red-950/30"
+              >
+                {cancelSubscription.isPending ? "Cancelling…" : "Cancel at period end"}
+              </button>
+            )}
+          {billing.isError && (
+            <span className="self-center text-xs text-amber-600">
+              Billing status is temporarily unavailable.
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ── Integrations ───────────────────────────────────────────── */}

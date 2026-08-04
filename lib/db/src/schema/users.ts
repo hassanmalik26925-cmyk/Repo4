@@ -17,6 +17,16 @@ export const usersTable = pgTable("users", {
   currency: text("currency").notNull().default("USD"),
   isOnboarded: text("is_onboarded").notNull().default("false"),
   isDemo: text("is_demo").notNull().default("false"),
+  billingStatus: text("billing_status").notNull().default("inactive"),
+  whopMembershipId: text("whop_membership_id"),
+  billingManageUrl: text("billing_manage_url"),
+  billingRenewalEnd: timestamp("billing_renewal_end", { withTimezone: true }),
+  billingCancelAtPeriodEnd: text("billing_cancel_at_period_end")
+    .notNull()
+    .default("false"),
+  billingLastCheckedAt: timestamp("billing_last_checked_at", {
+    withTimezone: true,
+  }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

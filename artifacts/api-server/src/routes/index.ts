@@ -16,6 +16,7 @@ import eventsRouter from "./events";
 import onboardingRouter from "./onboarding";
 import adminRouter from "./admin";
 import shippingRatesRouter from "./shippingRates";
+import billingRouter from "./billing";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(eventsRouter);
 router.use(onboardingRouter);
 router.use(shippingRatesRouter);
 router.use(adminRouter);
+router.use(billingRouter);
 
 export default router;

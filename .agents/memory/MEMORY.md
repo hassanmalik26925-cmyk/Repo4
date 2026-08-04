@@ -6,3 +6,4 @@
 - [Metrics formulas](metrics-formulas.md) — revenue/profit/ROAS differ intentionally by section (order revenue vs ad-attributed vs per-product); historical order_items freeze price/cost at sale time.
 - [Receipt email identity](receipt-email-identity.md) — no separate from-address; "from" is the account's own name/email (no store-email field exists in schema).
 - [Performance highlights](performance-highlights.md) — ad-set, creative, and repeat-customer rankings require persisted entity-level metrics; unsupported connectors must show empty states.
+- [Billing membership lookup](billing-membership-lookup.md) — Whop membership access checks must paginate and prefer any active matching membership; inactive cache TTL stays short after checkout.

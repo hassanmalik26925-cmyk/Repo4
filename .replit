@@ -33,3 +33,10 @@ externalPort = 80
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+WHOP_COMPANY_ID = "biz_EAq0NUZUVigF28"
+WHOP_PLAN_ID = "plan_Pe56NokMYVaAV"
+WHOP_PRODUCT_ID = "prod_qPxkI3MNC7KiU"

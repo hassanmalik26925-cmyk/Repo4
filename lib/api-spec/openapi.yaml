@@ -22,6 +22,7 @@ tags:
   - name: notifications
   - name: onboarding
   - name: admin
+  - name: billing
 paths:
   /healthz:
     get:
@@ -112,6 +113,67 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /billing/status:
+    get:
+      operationId: getBillingStatus
+      tags: [billing]
+      summary: Get verified CommercePulse subscription status
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Subscription status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
+        "401":
+          description: Unauthenticated
+
+  /billing/checkout:
+    post:
+      operationId: createBillingCheckout
+      tags: [billing]
+      summary: Create a hosted Whop checkout
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                redirectUrl: { type: string, format: uri }
+      responses:
+        "200":
+          description: Hosted checkout URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingCheckoutResponse"
+        "400":
+          description: Invalid return URL
+        "503":
+          description: Billing provider unavailable
+
+  /billing/cancel:
+    post:
+      operationId: cancelBillingSubscription
+      tags: [billing]
+      summary: Schedule the current subscription to cancel at period end
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Updated subscription status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
+        "400":
+          description: No active subscription
 
   /dashboard/overview:
     get:
@@ -936,6 +998,26 @@ components:
         expiresAt: { type: string }
         user: { $ref: "#/components/schemas/AuthUser" }
 
+    BillingStatus:
+      type: object
+      required: [hasAccess, status, planName, price, currency, cancelAtPeriodEnd]
+      properties:
+        hasAccess: { type: boolean }
+        status: { type: string }
+        planName: { type: string }
+        price: { type: number }
+        currency: { type: string }
+        renewalEnd: { type: string, nullable: true }
+        cancelAtPeriodEnd: { type: boolean }
+        manageUrl: { type: string, nullable: true }
+        membershipId: { type: string, nullable: true }
+
+    BillingCheckoutResponse:
+      type: object
+      required: [purchaseUrl]
+      properties:
+        purchaseUrl: { type: string, format: uri }
+
     RegisterBody:
       type: object
       required: [email, password, name]
@@ -1527,6 +1609,9 @@ components:
         name: { type: string }
         role: { type: string }
         currency: { type: string }
+        billingStatus: { type: string }
+        billingRenewalEnd: { type: string, nullable: true }
+        billingCancelAtPeriodEnd: { type: string }
         createdAt: { type: string }
 
     AdminUsersResponse:

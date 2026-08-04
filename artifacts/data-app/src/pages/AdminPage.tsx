@@ -60,6 +60,7 @@ export function AdminPage() {
                     <th className="px-4 py-2 text-left">Email</th>
                     <th className="px-4 py-2 text-left">Role</th>
                     <th className="px-4 py-2 text-left">Currency</th>
+                    <th className="px-4 py-2 text-left">Billing</th>
                     <th className="px-4 py-2 text-left">Joined</th>
                   </tr>
                 </thead>
@@ -76,6 +77,11 @@ export function AdminPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2.5 text-muted-foreground">{u.currency}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">
+                        <span className={u.billingStatus === "active" || u.billingStatus === "trialing" ? "text-emerald-600" : ""}>
+                          {u.billingStatus ?? "inactive"}
+                        </span>
+                      </td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{formatRelative(u.createdAt ?? "")}</td>
                     </tr>
                   ))}

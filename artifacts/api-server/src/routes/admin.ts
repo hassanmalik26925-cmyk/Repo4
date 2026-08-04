@@ -15,6 +15,9 @@ router.get("/admin/users", async (req, res): Promise<void> => {
       name: usersTable.name,
       role: usersTable.role,
       currency: usersTable.currency,
+      billingStatus: usersTable.billingStatus,
+      billingRenewalEnd: usersTable.billingRenewalEnd,
+      billingCancelAtPeriodEnd: usersTable.billingCancelAtPeriodEnd,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)

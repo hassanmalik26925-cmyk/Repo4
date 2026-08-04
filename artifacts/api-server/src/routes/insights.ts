@@ -7,6 +7,7 @@
 
 import { Router, type IRouter } from "express";
 import { requireAuth } from "../middlewares/requireAuth";
+import { requirePaidAccess } from "../middlewares/requirePaidAccess";
 import { RevenueService } from "../services/RevenueService";
 import { CustomerService } from "../services/CustomerService";
 import { MarketingService } from "../services/MarketingService";
@@ -17,6 +18,7 @@ import { GetInsightsResponse, GetInsightsSummaryResponse } from "@workspace/api-
 
 const router: IRouter = Router();
 router.use(requireAuth);
+router.use(requirePaidAccess);
 
 type InsightSeverity = "critical" | "warning" | "positive" | "info";
 
