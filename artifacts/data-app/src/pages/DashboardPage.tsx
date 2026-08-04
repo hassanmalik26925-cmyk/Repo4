@@ -38,7 +38,7 @@ const INSIGHT_TARGET: Record<string, Screen> = {
   "best-campaign": "marketing",
   "top-ad-set": "marketing",
   "top-creative": "marketing",
-  "repeat-customer": "customers",
+  "repeat-customer": "reports",
   "low-stock": "products",
   "out-of-stock": "products",
   "aov-down": "products",

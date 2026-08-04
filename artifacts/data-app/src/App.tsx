@@ -8,7 +8,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { LandingPage } from "./pages/LandingPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { OrdersPage } from "./pages/OrdersPage";
-import { CustomersPage } from "./pages/CustomersPage";
+import { ReportsPage } from "./pages/ReportsPage";
 import { MarketingPage } from "./pages/MarketingPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -94,7 +94,7 @@ function AuthenticatedApp() {
       >
         {screen === "dashboard" && <DashboardPage onNavigate={setScreen} hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "orders" && <OrdersPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
-        {screen === "customers" && <CustomersPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
+        {screen === "reports" && <ReportsPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "marketing" && <MarketingPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "products" && <ProductsPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "admin" && <AdminPage />}
