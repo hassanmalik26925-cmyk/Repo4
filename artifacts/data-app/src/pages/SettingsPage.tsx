@@ -355,7 +355,13 @@ export function SettingsPage() {
   function save(patch: Parameters<typeof update.mutate>[0]["data"], successMsg?: string) {
     update.mutate(
       { data: patch },
-      { onSuccess: () => toast(successMsg ?? "Saved") },
+      {
+        onSuccess: () => toast(successMsg ?? "Saved"),
+        onError: (err) => {
+          toast(friendlyError(err));
+          void settings.refetch();
+        },
+      },
     );
   }
 
@@ -983,6 +989,7 @@ function IntegrationRow({
   const disconnect = useDisconnectIntegration({
     mutation: {
       onSuccess: () => { invalidate(); onToast(`${integration.displayName} disconnected`); },
+      onError: (err: any) => onToast(friendlyError(err)),
     },
   });
   const sync = useSyncIntegration({

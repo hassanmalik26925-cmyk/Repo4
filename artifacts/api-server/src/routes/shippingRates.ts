@@ -26,6 +26,29 @@ function shape(row: typeof shippingRatesTable.$inferSelect) {
   };
 }
 
+function validateValues(
+  minOrderValue: number,
+  maxOrderValue: number | null,
+  rate: number,
+): string | null {
+  if (!Number.isFinite(minOrderValue) || minOrderValue < 0) {
+    return "Minimum order value must be a nonnegative number";
+  }
+  if (
+    maxOrderValue !== null &&
+    (!Number.isFinite(maxOrderValue) || maxOrderValue < 0)
+  ) {
+    return "Maximum order value must be null or a nonnegative number";
+  }
+  if (maxOrderValue !== null && maxOrderValue < minOrderValue) {
+    return "Maximum order value must be at least the minimum";
+  }
+  if (!Number.isFinite(rate) || rate < 0) {
+    return "Shipping rate must be a nonnegative number";
+  }
+  return null;
+}
+
 router.get("/shipping-rates", async (req, res): Promise<void> => {
   const userId = req.user!.sub;
   const rows = await db
@@ -43,15 +66,22 @@ router.post("/shipping-rates", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const minOrderValue = parsed.data.minOrderValue ?? 0;
+  const maxOrderValue = parsed.data.maxOrderValue ?? null;
+  const rateError = validateValues(minOrderValue, maxOrderValue, parsed.data.rate);
+  if (rateError) {
+    res.status(400).json({ error: rateError });
+    return;
+  }
   const [row] = await db
     .insert(shippingRatesTable)
     .values({
       userId,
       name: parsed.data.name,
       region: parsed.data.region ?? "All regions",
-      minOrderValue: String(parsed.data.minOrderValue ?? 0),
+      minOrderValue: String(minOrderValue),
       maxOrderValue:
-        parsed.data.maxOrderValue == null ? null : String(parsed.data.maxOrderValue),
+        maxOrderValue === null ? null : String(maxOrderValue),
       rate: String(parsed.data.rate),
       active: parsed.data.active ?? true,
     })
@@ -76,6 +106,35 @@ router.patch("/shipping-rates/:id", async (req, res): Promise<void> => {
   const parsed = UpdateShippingRateBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [existing] = await db
+    .select()
+    .from(shippingRatesTable)
+    .where(and(eq(shippingRatesTable.id, id), eq(shippingRatesTable.userId, userId)));
+  if (!existing) {
+    res.status(404).json({ error: "Shipping rate not found" });
+    return;
+  }
+  if (Object.keys(parsed.data).length === 0) {
+    res.status(400).json({ error: "At least one shipping-rate field is required" });
+    return;
+  }
+  const minOrderValue =
+    parsed.data.minOrderValue !== undefined
+      ? parsed.data.minOrderValue
+      : Number(existing.minOrderValue);
+  const maxOrderValue =
+    parsed.data.maxOrderValue !== undefined
+      ? parsed.data.maxOrderValue
+      : existing.maxOrderValue === null
+        ? null
+        : Number(existing.maxOrderValue);
+  const rate =
+    parsed.data.rate !== undefined ? parsed.data.rate : Number(existing.rate);
+  const rateError = validateValues(minOrderValue, maxOrderValue, rate);
+  if (rateError) {
+    res.status(400).json({ error: rateError });
     return;
   }
   const update: Partial<typeof shippingRatesTable.$inferInsert> = {};

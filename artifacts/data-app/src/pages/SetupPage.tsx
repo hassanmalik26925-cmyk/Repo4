@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCompleteOnboarding, useUpdateSettings } from "@workspace/api-client-react";
+import { useCompleteOnboarding } from "@workspace/api-client-react";
 import { useAuth } from "../contexts/AuthContext";
 import { Check, ChevronRight, Briefcase, Store, Target, LayoutDashboard, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
+import { friendlyError } from "../lib/errors";
 
 interface SetupPageProps {
   onComplete?: () => void;
@@ -11,7 +12,6 @@ interface SetupPageProps {
 
 export function SetupPage({ onComplete }: SetupPageProps) {
   const complete = useCompleteOnboarding();
-  const update = useUpdateSettings();
   const { user } = useAuth();
 
   const [step, setStep] = useState(0);
@@ -21,28 +21,18 @@ export function SetupPage({ onComplete }: SetupPageProps) {
     primaryGoal: "",
     salesChannel: ""
   });
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleNext = () => {
     if (step === 4) {
+      setSubmitError(null);
       localStorage.setItem("pulse_onboarding_context", JSON.stringify(answers));
       complete.mutate(undefined, {
         onSuccess: () => {
-          update.mutate(
-            { data: { isOnboarded: true } },
-            {
-              onSuccess: () => {
-                onComplete?.();
-              },
-              onError: () => {
-                // Even if settings update fails, complete the flow
-                onComplete?.();
-              },
-            }
-          );
-        },
-        onError: () => {
-          // If complete endpoint fails, still advance so user isn't stuck
           onComplete?.();
+        },
+        onError: (err) => {
+          setSubmitError(friendlyError(err));
         },
       });
     } else {
@@ -318,12 +308,17 @@ export function SetupPage({ onComplete }: SetupPageProps) {
                   </p>
                   <button
                     onClick={handleNext}
-                    disabled={complete.isPending || update.isPending}
+                     disabled={complete.isPending}
                     className="flex items-center justify-center gap-2 w-full sm:w-auto rounded-full bg-primary px-10 py-4 text-base font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid="btn-go-to-dashboard"
                   >
-                    {(complete.isPending || update.isPending) ? "Preparing..." : "Go to Dashboard"} <ArrowRight className="h-5 w-5" />
+                     {complete.isPending ? "Preparing..." : "Go to Dashboard"} <ArrowRight className="h-5 w-5" />
                   </button>
+                   {submitError && (
+                     <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+                       {submitError}
+                     </div>
+                   )}
                 </motion.div>
               )}
             </AnimatePresence>

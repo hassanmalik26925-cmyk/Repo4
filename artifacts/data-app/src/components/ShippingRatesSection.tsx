@@ -10,6 +10,7 @@ import {
 } from "@workspace/api-client-react";
 import { Skeleton } from "./UIPrimitives";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { friendlyError } from "../lib/errors";
 
 interface Props {
   onToast: (msg: string) => void;
@@ -41,25 +42,38 @@ export function ShippingRatesSection({ onToast }: Props) {
         setMaxOrderValue("");
         setRate("");
       },
+      onError: (err) => onToast(friendlyError(err)),
     },
   });
   const update = useUpdateShippingRate({
-    mutation: { onSuccess: () => { invalidate(); onToast("Shipping rate updated"); } },
+    mutation: {
+      onSuccess: () => { invalidate(); onToast("Shipping rate updated"); },
+      onError: (err) => onToast(friendlyError(err)),
+    },
   });
   const remove = useDeleteShippingRate({
-    mutation: { onSuccess: () => { invalidate(); onToast("Shipping rate removed"); } },
+    mutation: {
+      onSuccess: () => { invalidate(); onToast("Shipping rate removed"); },
+      onError: (err) => onToast(friendlyError(err)),
+    },
   });
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !rate) return;
+    const min = Number(minOrderValue);
+    const max = maxOrderValue ? Number(maxOrderValue) : null;
+    const shippingRate = Number(rate);
+    if (!name.trim() || !Number.isFinite(min) || (max !== null && !Number.isFinite(max)) || !Number.isFinite(shippingRate) || min < 0 || (max !== null && max < min) || shippingRate < 0) {
+      onToast("Enter valid shipping values. Maximum order value must be at least the minimum.");
+      return;
+    }
     create.mutate({
       data: {
         name: name.trim(),
         region: region.trim() || "All regions",
-        minOrderValue: Number(minOrderValue) || 0,
-        maxOrderValue: maxOrderValue ? Number(maxOrderValue) : null,
-        rate: Number(rate),
+        minOrderValue: min,
+        maxOrderValue: max,
+        rate: shippingRate,
         active: true,
       },
     });

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, CheckCircle2, Loader2, Copy, Truck, CreditCard, Mail, ChevronRight } from "lucide-react";
+import { Search, X, CheckCircle2, Loader2, Truck, CreditCard, Mail, ChevronRight } from "lucide-react";
 import { useListOrders, useGetOrder, useFulfillOrder, useSendOrderReceipt, getListOrdersQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDateRange } from "../contexts/DateRangeContext";
@@ -9,6 +9,7 @@ import { ConnectFirst } from "../components/ConnectFirst";
 import { formatDateShort } from "../lib/format";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { AnimatedPage, AnimatedList, AnimatedListItem, AnimatedCard } from "../components/AnimatedPage";
+import { friendlyError } from "../lib/errors";
 
 const STATUS_FILTERS = [
   { key: "all", label: "All" }, { key: "fulfilled", label: "Fulfilled" },
@@ -222,7 +223,6 @@ function OrderDetailSheet({ orderId, onClose, range }: { orderId: string; onClos
   const { format: fmt, formatExact } = useCurrency();
   const detail = useGetOrder(orderId);
   const queryClient = useQueryClient();
-  const [copied, setCopied] = useState(false);
 
   const fulfill = useFulfillOrder({
     mutation: {
@@ -230,17 +230,23 @@ function OrderDetailSheet({ orderId, onClose, range }: { orderId: string; onClos
         queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey({ range: range as any }) });
         detail.refetch();
       },
+      onError: (err) => {
+        setActionError(friendlyError(err));
+      },
     },
   });
 
   const [receiptState, setReceiptState] = useState<"idle" | "sent" | "failed">("idle");
+  const [actionError, setActionError] = useState<string | null>(null);
   const sendReceipt = useSendOrderReceipt({
     mutation: {
       onSuccess: (data) => {
+        setActionError(null);
         setReceiptState(data.sent ? "sent" : "failed");
         setTimeout(() => setReceiptState("idle"), 2500);
       },
-      onError: () => {
+      onError: (err) => {
+        setActionError(friendlyError(err));
         setReceiptState("failed");
         setTimeout(() => setReceiptState("idle"), 2500);
       },
@@ -271,8 +277,21 @@ function OrderDetailSheet({ orderId, onClose, range }: { orderId: string; onClos
         <div className="flex justify-center pt-3 pb-1">
           <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
         </div>
-        {detail.isLoading || !o ? (
+        {detail.isLoading ? (
           <div className="p-5"><div className="shimmer-bg h-64 rounded-2xl" /></div>
+        ) : detail.isError || !o ? (
+          <div className="flex flex-col items-center gap-3 p-8 text-center">
+            <div className="text-sm font-semibold">Unable to load this order</div>
+            <div className="text-xs text-muted-foreground">
+              {friendlyError(detail.error)}
+            </div>
+            <button
+              onClick={() => detail.refetch()}
+              className="rounded-full bg-sky-500 px-4 py-2 text-xs font-semibold text-white"
+            >
+              Try again
+            </button>
+          </div>
         ) : (
           <>
             <div className="flex items-start justify-between px-5 pb-4 pt-2">
@@ -315,17 +334,12 @@ function OrderDetailSheet({ orderId, onClose, range }: { orderId: string; onClos
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950">
                     <Truck className="h-4 w-4" />
                   </div>
-                  <div><div className="text-sm font-semibold">Express (1-2 days)</div><div className="text-xs text-muted-foreground">Method</div></div>
-                </div>
-                <div className="flex items-center justify-between border-t border-[hsl(var(--card-border))] px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pink-100 text-pink-500 dark:bg-pink-950"><span className="text-xs font-bold">#</span></div>
-                    <div><div className="font-mono text-sm font-semibold">1Z999AA110012345</div><div className="text-xs text-muted-foreground">Tracking</div></div>
+                  <div>
+                    <div className="text-sm font-semibold">Shipping recorded</div>
+                    <div className="text-xs text-muted-foreground">
+                      {o.shipping > 0 ? `${formatExact(o.shipping)} charged` : "No shipping charge recorded"}
+                    </div>
                   </div>
-                  <button onClick={() => { navigator.clipboard.writeText("1Z999AA110012345"); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="flex h-8 w-8 items-center justify-center rounded-full border border-[hsl(var(--card-border))] text-muted-foreground hover-elevate">
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                  {copied && <span className="ml-2 text-xs text-emerald-500">Copied!</span>}
                 </div>
               </div>
             </div>
@@ -333,7 +347,7 @@ function OrderDetailSheet({ orderId, onClose, range }: { orderId: string; onClos
               <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment</div>
               <div className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--card-border))] px-4 py-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-500 dark:bg-blue-950"><CreditCard className="h-4 w-4" /></div>
-                <div><div className="text-sm font-semibold">Mastercard ....4137</div><div className="text-xs text-muted-foreground">Charged</div></div>
+                <div><div className="text-sm font-semibold">Payment recorded</div><div className="text-xs text-muted-foreground">Payment method details are not available</div></div>
               </div>
             </div>
             <div className="mx-5 mb-5">
@@ -348,6 +362,11 @@ function OrderDetailSheet({ orderId, onClose, range }: { orderId: string; onClos
                 <SummaryRow label="Profit" value={`+${formatExact(o.profit)}`} good />
               </div>
             </div>
+            {actionError && (
+              <div className="mx-5 mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
+                {actionError}
+              </div>
+            )}
             <div className="mx-5 flex gap-3">
               <motion.button
                 whileTap={{ scale: 0.96 }}

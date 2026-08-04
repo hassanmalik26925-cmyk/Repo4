@@ -34,6 +34,12 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 app.use("/api", router);
 
+// Keep API failures machine-readable and consistent. Without this explicit
+// fallback, Express returns an HTML 404 page for unknown API paths.
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "API route not found" });
+});
+
 // Global error handler must be last
 app.use(errorHandler);
 

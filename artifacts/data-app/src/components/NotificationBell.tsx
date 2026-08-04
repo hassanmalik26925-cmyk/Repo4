@@ -18,10 +18,15 @@ const TYPE_ICON: Record<string, string> = {
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const notifications = useListNotifications();
-  const markRead = useMarkNotificationRead();
-  const markAll = useMarkAllNotificationsRead();
+  const markRead = useMarkNotificationRead({
+    mutation: { onError: () => setActionError("Could not update this notification. Try again.") },
+  });
+  const markAll = useMarkAllNotificationsRead({
+    mutation: { onError: () => setActionError("Could not update notifications. Try again.") },
+  });
   const unread = notifications.data?.unreadCount ?? 0;
 
   useEffect(() => {
@@ -35,7 +40,7 @@ export function NotificationBell() {
   return (
     <div ref={ref} className="relative">
       <motion.button
-        onClick={() => setOpen(!open)}
+        onClick={() => { setOpen(!open); setActionError(null); }}
         whileTap={{ scale: 0.9 }}
         className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-[hsl(var(--card-border))] text-muted-foreground hover:bg-accent"
         aria-label="Notifications"
@@ -71,6 +76,11 @@ export function NotificationBell() {
                 </button>
               )}
             </div>
+            {actionError && (
+              <div className="border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-xs text-red-600 dark:text-red-400">
+                {actionError}
+              </div>
+            )}
             <div className="max-h-[360px] overflow-y-auto">
               {notifications.isLoading ? (
                 <div className="p-4 text-center text-xs text-muted-foreground">Loading...</div>
