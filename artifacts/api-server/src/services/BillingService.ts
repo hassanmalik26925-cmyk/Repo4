@@ -178,3 +178,83 @@ export async function cancelSubscription(userId: string) {
     .where(eq(usersTable.id, userId));
   return getBillingStatus(userId);
 }
+
+/**
+ * Webhooks are used to invalidate the local billing cache quickly. Access is
+ * still verified against Whop by getBillingStatus/requirePaidAccess, so a
+ * webhook can never grant access by itself.
+ */
+export async function reconcileBillingWebhook(event: unknown): Promise<void> {
+  if (!event || typeof event !== "object") return;
+
+  const payload = event as {
+    type?: unknown;
+    company_id?: unknown;
+    data?: {
+      id?: unknown;
+      status?: unknown;
+      metadata?: unknown;
+      manage_url?: unknown;
+      renewal_period_end?: unknown;
+      cancel_at_period_end?: unknown;
+      plan?: { id?: unknown } | null;
+    };
+  };
+
+  const supportedEvents = new Set([
+    "membership.activated",
+    "membership.deactivated",
+    "membership.cancel_at_period_end_changed",
+  ]);
+  if (typeof payload.type !== "string" || !supportedEvents.has(payload.type)) {
+    return;
+  }
+
+  const companyId = process.env.WHOP_COMPANY_ID;
+  if (companyId && payload.company_id && payload.company_id !== companyId) {
+    throw new Error("Whop webhook company does not match this app.");
+  }
+
+  const data = payload.data;
+  const metadata =
+    data?.metadata && typeof data.metadata === "object"
+      ? (data.metadata as Record<string, unknown>)
+      : null;
+  const userId =
+    metadata && typeof metadata.commercepulse_user_id === "string"
+      ? metadata.commercepulse_user_id
+      : null;
+  if (!userId) return;
+
+  const configuredPlanId = process.env.WHOP_PLAN_ID;
+  if (
+    configuredPlanId &&
+    data?.plan?.id &&
+    data.plan.id !== configuredPlanId
+  ) {
+    return;
+  }
+
+  const renewalEnd =
+    typeof data?.renewal_period_end === "string"
+      ? new Date(data.renewal_period_end)
+      : null;
+  const validRenewalEnd =
+    renewalEnd && !Number.isNaN(renewalEnd.getTime()) ? renewalEnd : null;
+
+  await db
+    .update(usersTable)
+    .set({
+      billingStatus:
+        typeof data?.status === "string" ? data.status : "inactive",
+      whopMembershipId: typeof data?.id === "string" ? data.id : null,
+      billingManageUrl:
+        typeof data?.manage_url === "string" ? data.manage_url : null,
+      billingRenewalEnd: validRenewalEnd,
+      billingCancelAtPeriodEnd: String(data?.cancel_at_period_end === true),
+      // Force the next billing check to ask Whop for current source-of-truth
+      // state, which also handles out-of-order or duplicate webhook delivery.
+      billingLastCheckedAt: null,
+    })
+    .where(eq(usersTable.id, userId));
+}

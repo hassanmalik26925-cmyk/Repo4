@@ -28,7 +28,13 @@ async function initWhopClient(): Promise<Whop> {
   const data = await response.json() as { items?: Array<{ settings?: { api_key?: string } }> };
   const apiKey = data.items?.[0]?.settings?.api_key;
   if (!apiKey) throw new Error("Whop is not connected or has no API key.");
-  return new Whop({ apiKey });
+  const webhookSecret = process.env.WHOP_WEBHOOK_SECRET;
+  return new Whop({
+    apiKey,
+    webhookKey: webhookSecret
+      ? Buffer.from(webhookSecret, "utf8").toString("base64")
+      : undefined,
+  });
 }
 
 export function getWhopClient(): Promise<Whop> {

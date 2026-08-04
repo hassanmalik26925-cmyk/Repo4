@@ -17,6 +17,7 @@ import onboardingRouter from "./onboarding";
 import adminRouter from "./admin";
 import shippingRatesRouter from "./shippingRates";
 import billingRouter from "./billing";
+import whopWebhookRouter from "./whopWebhook";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(onboardingRouter);
 router.use(shippingRatesRouter);
 router.use(adminRouter);
 router.use(billingRouter);
+router.use(whopWebhookRouter);
 
 export default router;
