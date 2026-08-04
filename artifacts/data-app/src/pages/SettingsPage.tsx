@@ -33,6 +33,8 @@ import {
   BarChart3,
   MousePointerClick,
   Server,
+  BookOpen,
+  ExternalLink,
 } from "lucide-react";
 import {
   useGetSettings,
@@ -209,6 +211,183 @@ const PLATFORM_FIELDS: Record<string, FieldDef[]> = {
     { key: "apiKeyHeader", label: "API key header (optional)", placeholder: "X-Api-Key", optional: true },
     { key: "stockPath", label: "Stock path (optional)", placeholder: "/inventory", optional: true },
   ],
+};
+
+interface PlatformGuide {
+  source: string;
+  summary: string;
+  steps: string[];
+  values: string;
+  docsUrl?: string;
+  docsLabel?: string;
+}
+
+const PLATFORM_GUIDES: Record<string, PlatformGuide> = {
+  shopify: {
+    source: "Shopify Admin → Settings → Apps and sales channels → Develop apps",
+    summary: "Create a custom app in your store, grant read access to the data CommercePulse imports, and install it to receive an Admin API access token.",
+    steps: [
+      "Open your Shopify Admin and create a custom app for this store.",
+      "Configure Admin API scopes for products, inventory, orders, and customers, then install the app.",
+      "Copy the Admin API access token and use your *.myshopify.com domain below.",
+    ],
+    values: "Shop domain and Admin API access token",
+    docsUrl: "https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/generate-app-access-tokens-admin",
+  },
+  woocommerce: {
+    source: "WordPress Admin → WooCommerce → Settings → Advanced → REST API",
+    summary: "Generate WooCommerce REST API keys for a user with read access. Your store must use HTTPS so the credentials are sent securely.",
+    steps: [
+      "Open the REST API section in your WooCommerce settings and add a key.",
+      "Choose a store manager or administrator and set permissions to Read.",
+      "Copy the consumer key and secret, then enter your public HTTPS store URL below.",
+    ],
+    values: "Store URL, consumer key, and consumer secret",
+    docsUrl: "https://woocommerce.github.io/woocommerce-rest-api-docs/",
+  },
+  amazon: {
+    source: "Amazon Seller Central / Developer Central → Selling Partner API",
+    summary: "Authorize a Selling Partner API application for your seller account. Amazon supplies the LWA and seller identifiers required for signed SP-API requests.",
+    steps: [
+      "Register or select a Selling Partner API application in Amazon Developer Central.",
+      "Authorize the app for your seller account and copy the LWA refresh token.",
+      "Enter the client credentials, marketplace ID, seller ID, and the matching AWS region.",
+    ],
+    values: "LWA refresh token, client ID, client secret, marketplace ID, seller ID, and region",
+    docsUrl: "https://developer-docs.amazon.com/sp-api/docs/authorizing-selling-partner-api-applications",
+  },
+  ebay: {
+    source: "eBay Developers Program → Application Keys and User Tokens",
+    summary: "Create an eBay application, authorize the required Sell API scopes, and generate a user refresh token for the marketplace you operate in.",
+    steps: [
+      "Create an application in the eBay Developers Program and copy the App ID and Cert ID.",
+      "Complete the OAuth consent flow with the Sell Fulfillment read scope.",
+      "Paste the resulting refresh token and choose the marketplace, such as EBAY_US.",
+    ],
+    values: "Client ID, client secret, refresh token, and optional marketplace ID",
+    docsUrl: "https://developer.ebay.com/api-docs/static/oauth-tokens.html",
+  },
+  meta_ads: {
+    source: "Meta for Developers → My Apps → Marketing API",
+    summary: "Create a Meta app with Marketing API access, generate a token for the ad account, and copy the account ID including the act_ prefix.",
+    steps: [
+      "Create or select a Meta app and add the Marketing API product.",
+      "Generate a long-lived access token with permission to read the ad account.",
+      "Copy the ad account ID from Ads Manager and enter it with the token below.",
+    ],
+    values: "Access token and ad account ID, for example act_123456789",
+    docsUrl: "https://developers.facebook.com/docs/marketing-api/get-started",
+  },
+  google_ads: {
+    source: "Google Ads API Center + Google Cloud Console",
+    summary: "Enable the Google Ads API, create OAuth credentials, authorize a Google Ads user, and obtain a refresh token. A developer token is also required.",
+    steps: [
+      "Apply for a Google Ads developer token in your manager account.",
+      "Create an OAuth client in Google Cloud and complete the authorization flow to get a refresh token.",
+      "Enter the 10-digit customer ID without dashes; add the manager account ID if this customer is accessed through an MCC.",
+    ],
+    values: "Developer token, OAuth client ID/secret, refresh token, customer ID, and optional MCC ID",
+    docsUrl: "https://developers.google.com/google-ads/api/docs/oauth/overview",
+  },
+  tiktok: {
+    source: "TikTok for Business → Marketing API / Developer Portal",
+    summary: "Register a TikTok Business API app, request the required reporting permissions, and generate an access token for the advertiser account.",
+    steps: [
+      "Create an app in the TikTok for Business developer portal and request Marketing API access.",
+      "Authorize the app for the advertiser account and generate an access token.",
+      "Copy the advertiser ID from TikTok Ads Manager and enter it with the token below.",
+    ],
+    values: "Access token and advertiser ID",
+    docsUrl: "https://ads.tiktok.com/marketing_api/docs",
+  },
+  pinterest: {
+    source: "Pinterest Developers → My Apps",
+    summary: "Create a Pinterest app, authorize the ads reporting scopes, and use the resulting access token with the Pinterest ad account ID.",
+    steps: [
+      "Create an app in the Pinterest developer portal.",
+      "Complete OAuth authorization with access to ad accounts and campaign reporting.",
+      "Copy the ad account ID and paste the access token below.",
+    ],
+    values: "Access token and ad account ID",
+    docsUrl: "https://developers.pinterest.com/docs/api/v5/",
+  },
+  snapchat: {
+    source: "Snap Business Manager → Business API",
+    summary: "Register a Snapchat Marketing API app, configure OAuth, and authorize the organization and ad account you want to report on.",
+    steps: [
+      "Create an app in the Snap developer portal and configure its OAuth redirect settings.",
+      "Authorize the app and obtain a refresh token for the organization.",
+      "Enter the client credentials, organization ID, and ad account ID below.",
+    ],
+    values: "Client ID, client secret, refresh token, organization ID, and ad account ID",
+    docsUrl: "https://marketingapi.snapchat.com/docs/",
+  },
+  microsoft_ads: {
+    source: "Microsoft Advertising Developer Portal",
+    summary: "Register an application with Microsoft Advertising, complete OAuth authorization, and collect the customer, account, and developer identifiers.",
+    steps: [
+      "Register an app in Microsoft Entra ID and configure the Microsoft Advertising OAuth permissions.",
+      "Complete the OAuth flow to obtain a refresh token and provide the developer token.",
+      "Copy the customer ID and account ID from Microsoft Advertising.",
+    ],
+    values: "Application ID, client secret, refresh token, customer ID, account ID, and developer token",
+    docsUrl: "https://learn.microsoft.com/en-us/advertising/guides/",
+  },
+  klaviyo: {
+    source: "Klaviyo → Settings → API Keys",
+    summary: "Create a private API key with read access to the profiles and campaign data you want to import.",
+    steps: [
+      "Open API Keys in your Klaviyo account settings and create a private key.",
+      "Grant the read scopes required for profiles, campaigns, and campaign metrics.",
+      "Copy the private key once and paste it below.",
+    ],
+    values: "Private API key",
+    docsUrl: "https://developers.klaviyo.com/en/docs/getting_started_with_klaviyo_apis",
+  },
+  stripe: {
+    source: "Stripe Dashboard → Developers → API keys",
+    summary: "Copy a Stripe secret key from the account whose payment data you want to reconcile. Use a test key for test-mode data and a live key for production data.",
+    steps: [
+      "Open API keys in the Stripe Dashboard and choose the correct live or test mode.",
+      "Reveal or create a restricted/secret key with permission to read charges and customers.",
+      "Paste the secret key below. CommercePulse never displays stored credentials after saving.",
+    ],
+    values: "Stripe secret key, beginning with sk_live_ or sk_test_",
+    docsUrl: "https://docs.stripe.com/keys",
+  },
+  paypal: {
+    source: "PayPal Developer Dashboard → My Apps & Credentials",
+    summary: "Create a PayPal REST app, choose live or sandbox mode, and copy its client ID and secret.",
+    steps: [
+      "Open My Apps & Credentials and select the live or sandbox environment.",
+      "Create or select a REST app and copy the client ID and secret.",
+      "Enter the credentials below. Use the same environment as the transactions you want to import.",
+    ],
+    values: "Client ID, client secret, and the matching live/sandbox environment",
+    docsUrl: "https://developer.paypal.com/api/rest/",
+  },
+  shipstation: {
+    source: "ShipStation → Account Settings → Selling Channels → API Settings",
+    summary: "Generate ShipStation API credentials for the account that owns your shipment history.",
+    steps: [
+      "Open API Settings in ShipStation and generate or copy the API key and API secret.",
+      "Confirm the credentials belong to the ShipStation account connected to your stores.",
+      "Paste both values below and connect.",
+    ],
+    values: "ShipStation API key and API secret",
+    docsUrl: "https://www.shipstation.com/docs/api/",
+  },
+  supplier: {
+    source: "Your supplier's developer portal or API documentation",
+    summary: "This is a configurable REST connector. Ask your supplier for the inventory endpoint, API key, and the header used to authenticate requests.",
+    steps: [
+      "Find the supplier's API base URL and inventory/stock endpoint in its developer documentation.",
+      "Create an API key with read access to inventory and product data.",
+      "Enter the base URL, key, authentication header, and stock path below.",
+    ],
+    values: "API base URL, API key, optional API-key header, and optional stock path",
+    docsLabel: "Open your supplier's API documentation",
+  },
 };
 
 // ── Option sets ───────────────────────────────────────────────────────────────
@@ -967,9 +1146,11 @@ function IntegrationRow({
 }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [connectErr, setConnectErr] = useState<string | null>(null);
 
   const { bg, fg } = PLATFORM_BG[integration.platform] ?? { bg: "#F1F5F9", fg: "#64748B" };
+  const guide = PLATFORM_GUIDES[integration.platform];
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListIntegrationsQueryKey() });
@@ -1039,6 +1220,14 @@ function IntegrationRow({
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
+          <button
+            type="button"
+            onClick={() => setShowGuide((s) => !s)}
+            className="flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold text-sky-600 hover:bg-sky-500/10 dark:text-sky-400"
+          >
+            <BookOpen className="h-3 w-3" />
+            {showGuide ? "Hide guide" : "How to connect"}
+          </button>
           {isConnected ? (
             <>
               <button
@@ -1077,6 +1266,10 @@ function IntegrationRow({
         </div>
       </div>
 
+      {showGuide && guide && (
+        <ConnectionGuide guide={guide} platform={integration.platform} />
+      )}
+
       {showForm && !isConnected && (
         <CredentialForm
           platform={integration.platform}
@@ -1088,6 +1281,77 @@ function IntegrationRow({
           }}
         />
       )}
+    </div>
+  );
+}
+
+function ConnectionGuide({
+  guide,
+  platform,
+}: {
+  guide: PlatformGuide;
+  platform: string;
+}) {
+  return (
+    <div className="mx-4 mb-3 rounded-xl border border-sky-200 bg-sky-50/70 p-3 dark:border-sky-900 dark:bg-sky-950/20">
+      <div className="flex items-start gap-2">
+        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-300">
+          <BookOpen className="h-3.5 w-3.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-bold text-sky-950 dark:text-sky-100">
+            How to connect {platform === "supplier" ? "your supplier" : "this account"}
+          </div>
+          <p className="mt-1 text-[11px] leading-relaxed text-sky-950/70 dark:text-sky-100/70">
+            {guide.summary}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-lg border border-sky-200/80 bg-white/70 px-2.5 py-2 dark:border-sky-800 dark:bg-sky-950/30">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+          Where to get it
+        </div>
+        <div className="mt-0.5 text-[11px] font-semibold text-foreground">
+          {guide.source}
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+          Steps
+        </div>
+        <ol className="mt-1.5 space-y-1.5">
+          {guide.steps.map((step, index) => (
+            <li key={step} className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sky-500 text-[9px] font-bold text-white">
+                {index + 1}
+              </span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-sky-200/80 pt-2.5 dark:border-sky-800">
+        <div className="text-[10px] text-muted-foreground">
+          <span className="font-semibold text-foreground">Enter here:</span> {guide.values}
+        </div>
+        {guide.docsUrl ? (
+          <a
+            href={guide.docsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-600 hover:underline dark:text-sky-400"
+          >
+            Official documentation <ExternalLink className="h-3 w-3" />
+          </a>
+        ) : (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+            {guide.docsLabel} <ExternalLink className="h-3 w-3" />
+          </span>
+        )}
+      </div>
     </div>
   );
 }
