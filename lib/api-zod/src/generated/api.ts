@@ -509,6 +509,7 @@ export const ListIntegrationsResponseItem = zod.object({
   id: zod.string(),
   platform: zod.string(),
   displayName: zod.string(),
+  accountLabel: zod.string().optional(),
   status: zod.string(),
   lastSyncAt: zod.string().nullish(),
   lastError: zod.string().nullish(),
@@ -521,6 +522,7 @@ export const ConnectIntegrationParams = zod.object({
 });
 
 export const ConnectIntegrationBody = zod.object({
+  accountLabel: zod.string().optional(),
   apiKey: zod.string().optional(),
   apiSecret: zod.string().optional(),
   accessToken: zod.string().optional(),
@@ -550,6 +552,7 @@ export const ConnectIntegrationResponse = zod.object({
   id: zod.string(),
   platform: zod.string(),
   displayName: zod.string(),
+  accountLabel: zod.string().optional(),
   status: zod.string(),
   lastSyncAt: zod.string().nullish(),
   lastError: zod.string().nullish(),
@@ -557,13 +560,14 @@ export const ConnectIntegrationResponse = zod.object({
 });
 
 export const DisconnectIntegrationParams = zod.object({
-  platform: zod.coerce.string(),
+  integrationId: zod.coerce.string(),
 });
 
 export const DisconnectIntegrationResponse = zod.object({
   id: zod.string(),
   platform: zod.string(),
   displayName: zod.string(),
+  accountLabel: zod.string().optional(),
   status: zod.string(),
   lastSyncAt: zod.string().nullish(),
   lastError: zod.string().nullish(),
@@ -571,13 +575,14 @@ export const DisconnectIntegrationResponse = zod.object({
 });
 
 export const SyncIntegrationParams = zod.object({
-  platform: zod.coerce.string(),
+  integrationId: zod.coerce.string(),
 });
 
 export const SyncIntegrationResponse = zod.object({
   id: zod.string(),
   platform: zod.string(),
   displayName: zod.string(),
+  accountLabel: zod.string().optional(),
   status: zod.string(),
   lastSyncAt: zod.string().nullish(),
   lastError: zod.string().nullish(),

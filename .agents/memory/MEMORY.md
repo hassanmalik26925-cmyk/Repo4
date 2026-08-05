@@ -15,3 +15,4 @@
 - [Error handling audit](error-handling-audit.md) — server mutations must enforce cross-field rules and resolve resource existence before patch validation errors.
 - [Insight target navigation](insight-target-navigation.md) — actionable insights carry an entity ID and semantic focus so review opens the exact detail.
 - [Ads trend truthfulness](ads-trend-truthfulness.md) — ad charts must use persisted daily metrics and show an explicit empty state when no daily rows exist.
+- [Social login provider boundary](social-login-provider-boundary.md) — managed Clerk can launch Google/X, while Facebook stays disabled until a real Facebook OAuth provider is configured.

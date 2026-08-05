@@ -315,6 +315,7 @@ export interface Integration {
   id: string;
   platform: string;
   displayName: string;
+  accountLabel?: string;
   status: string;
   /** @nullable */
   lastSyncAt?: string | null;
@@ -324,6 +325,7 @@ export interface Integration {
 }
 
 export interface ConnectIntegrationBody {
+  accountLabel?: string;
   apiKey?: string;
   apiSecret?: string;
   accessToken?: string;

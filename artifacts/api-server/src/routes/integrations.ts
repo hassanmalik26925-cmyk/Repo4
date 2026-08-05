@@ -29,6 +29,7 @@ function shape(row: typeof integrationsTable.$inferSelect) {
     id: row.id,
     platform: row.platform,
     displayName: row.displayName,
+    accountLabel: row.accountLabel,
     status: row.status,
     lastSyncAt: row.lastSyncAt?.toISOString() ?? null,
     lastError: row.lastError,
@@ -42,19 +43,19 @@ router.get("/integrations", async (req, res): Promise<void> => {
     .select()
     .from(integrationsTable)
     .where(eq(integrationsTable.userId, userId));
-  const map = new Map(existing.map((i) => [i.platform, i]));
-  const out = SUPPORTED_PLATFORMS.map((platform) => {
-    const found = map.get(platform);
-    if (found) return shape(found);
-    return {
+  const out = SUPPORTED_PLATFORMS.flatMap((platform) => {
+    const found = existing.filter((i) => i.platform === platform);
+    if (found.length) return found.map(shape);
+    return [{
       id: `placeholder-${platform}`,
       platform,
       displayName: PLATFORM_LABELS[platform] ?? platform,
+      accountLabel: "",
       status: "disconnected",
       lastSyncAt: null,
       lastError: null,
       supportsCredentials: getAdapter(platform)?.requiresCredentials ?? false,
-    };
+    }];
   });
   res.json(ListIntegrationsResponse.parse(out));
 });
@@ -86,18 +87,19 @@ router.post("/integrations/:platform/connect", async (req, res): Promise<void> =
       return;
     }
   }
+  const accountLabel =
+    parsed.data.accountLabel?.trim() ||
+    String(parsed.data.accountId ?? parsed.data.customerId ?? parsed.data.adAccountId ?? "").trim() ||
+    `${PLATFORM_LABELS[platform] ?? platform} account`;
   const [row] = await db
     .insert(integrationsTable)
     .values({
       userId,
       platform,
       displayName: PLATFORM_LABELS[platform] ?? platform,
+      accountLabel,
       status: "connected",
       credentials: encrypted,
-    })
-    .onConflictDoUpdate({
-      target: [integrationsTable.userId, integrationsTable.platform],
-      set: { status: "connected", credentials: encrypted, lastError: null },
     })
     .returning();
   if (!row) {
@@ -114,11 +116,11 @@ router.post("/integrations/:platform/connect", async (req, res): Promise<void> =
   res.json(ConnectIntegrationResponse.parse(shape(row)));
 });
 
-router.post("/integrations/:platform/disconnect", async (req, res): Promise<void> => {
+router.post("/integrations/:integrationId/disconnect", async (req, res): Promise<void> => {
   const userId = req.user!.sub;
-  const platform = Array.isArray(req.params.platform)
-    ? req.params.platform[0]!
-    : req.params.platform;
+  const integrationId = Array.isArray(req.params.integrationId)
+    ? req.params.integrationId[0]!
+    : req.params.integrationId;
 
   // Demo accounts can toggle integrations connected/disconnected just like a
   // real account — the Settings UI reflects the real status either way. What
@@ -132,7 +134,7 @@ router.post("/integrations/:platform/disconnect", async (req, res): Promise<void
     .where(
       and(
         eq(integrationsTable.userId, userId),
-        eq(integrationsTable.platform, platform),
+        eq(integrationsTable.id, integrationId),
       ),
     )
     .returning();
@@ -150,12 +152,20 @@ router.post("/integrations/:platform/disconnect", async (req, res): Promise<void
   res.json(DisconnectIntegrationResponse.parse(shape(row)));
 });
 
-router.post("/integrations/:platform/sync", async (req, res): Promise<void> => {
+router.post("/integrations/:integrationId/sync", async (req, res): Promise<void> => {
   const userId = req.user!.sub;
-  const platform = Array.isArray(req.params.platform)
-    ? req.params.platform[0]!
-    : req.params.platform;
-  const result = await runSyncFor(userId, platform);
+  const integrationId = Array.isArray(req.params.integrationId)
+    ? req.params.integrationId[0]!
+    : req.params.integrationId;
+  const [target] = await db
+    .select()
+    .from(integrationsTable)
+    .where(and(eq(integrationsTable.id, integrationId), eq(integrationsTable.userId, userId)));
+  if (!target) {
+    res.status(404).json({ error: "Integration not found" });
+    return;
+  }
+  const result = await runSyncFor(userId, integrationId);
   if (!result.ok) {
     res.status(400).json({ error: result.error ?? "Sync failed" });
     return;
@@ -166,7 +176,7 @@ router.post("/integrations/:platform/sync", async (req, res): Promise<void> => {
     .where(
       and(
         eq(integrationsTable.userId, userId),
-        eq(integrationsTable.platform, platform),
+        eq(integrationsTable.id, integrationId),
       ),
     );
   if (!row) {

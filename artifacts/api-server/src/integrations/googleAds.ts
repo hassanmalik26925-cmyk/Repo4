@@ -140,6 +140,9 @@ export const googleAdsAdapter: IntegrationAdapter = {
   async sync(userId, credentials) {
     if (!isGoogleAdsCreds(credentials)) throw new Error("Invalid Google Ads credentials");
     const result: SyncResult = { ...ZERO_SYNC };
+    const integrationId = typeof credentials._integrationId === "string"
+      ? credentials._integrationId
+      : null;
 
     // ── Campaigns ─────────────────────────────────────────────────────────────
     const campaignRows = await withRetry("google_ads:campaigns", () =>
@@ -157,13 +160,14 @@ export const googleAdsAdapter: IntegrationAdapter = {
         .insert(adCampaignsTable)
         .values({
           userId,
+          integrationId,
           channel: "google",
           externalId: String(c.id),
           name: c.name,
           status: c.status?.toLowerCase() ?? "active",
         })
         .onConflictDoUpdate({
-          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId],
+          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId, adCampaignsTable.integrationId],
           set: { name: c.name, status: c.status?.toLowerCase() ?? "active" },
         })
         .returning({ id: adCampaignsTable.id });
@@ -196,6 +200,7 @@ export const googleAdsAdapter: IntegrationAdapter = {
           .insert(adSetsTable)
           .values({
             userId,
+            integrationId,
             campaignId: inserted.id,
             channel: "google",
             externalId: String(group.id),
@@ -203,7 +208,7 @@ export const googleAdsAdapter: IntegrationAdapter = {
             status: group.status?.toLowerCase() ?? "active",
           })
           .onConflictDoUpdate({
-            target: [adSetsTable.userId, adSetsTable.channel, adSetsTable.externalId],
+            target: [adSetsTable.userId, adSetsTable.channel, adSetsTable.externalId, adSetsTable.integrationId],
             set: {
               name: group.name ?? `Ad group ${group.id}`,
               status: group.status?.toLowerCase() ?? "active",
@@ -224,6 +229,7 @@ export const googleAdsAdapter: IntegrationAdapter = {
           .insert(adSetMetricsTable)
           .values({
             userId,
+          integrationId,
             adSetId,
             date,
             spend: String(Number(m.costMicros ?? 0) / 1_000_000),
@@ -282,7 +288,7 @@ export const googleAdsAdapter: IntegrationAdapter = {
             status: "active",
           })
           .onConflictDoUpdate({
-            target: [adCreativesTable.userId, adCreativesTable.channel, adCreativesTable.externalId],
+            target: [adCreativesTable.userId, adCreativesTable.channel, adCreativesTable.externalId, adCreativesTable.integrationId],
             set: { name: ad.name ?? `Google ad ${ad.id}`, adSetId, campaignId: inserted.id },
           })
           .returning({ id: adCreativesTable.id });
@@ -343,6 +349,7 @@ export const googleAdsAdapter: IntegrationAdapter = {
           .insert(adMetricsTable)
           .values({
             userId,
+          integrationId,
             campaignId: inserted.id,
             date,
             spend: String((Number(m.costMicros ?? 0)) / 1_000_000),

@@ -632,7 +632,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /integrations/{platform}/disconnect:
+  /integrations/{integrationId}/disconnect:
     post:
       operationId: disconnectIntegration
       tags: [integrations]
@@ -640,7 +640,7 @@ paths:
         - bearerAuth: []
       parameters:
         - in: path
-          name: platform
+          name: integrationId
           required: true
           schema: { type: string }
       responses:
@@ -651,7 +651,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Integration"
 
-  /integrations/{platform}/sync:
+  /integrations/{integrationId}/sync:
     post:
       operationId: syncIntegration
       tags: [integrations]
@@ -659,7 +659,7 @@ paths:
         - bearerAuth: []
       parameters:
         - in: path
-          name: platform
+          name: integrationId
           required: true
           schema: { type: string }
       responses:
@@ -1430,6 +1430,7 @@ components:
         id: { type: string }
         platform: { type: string }
         displayName: { type: string }
+        accountLabel: { type: string }
         status: { type: string }
         lastSyncAt: { type: ["string", "null"] }
         lastError: { type: ["string", "null"] }
@@ -1438,6 +1439,7 @@ components:
     ConnectIntegrationBody:
       type: object
       properties:
+        accountLabel: { type: string }
         apiKey: { type: string }
         apiSecret: { type: string }
         accessToken: { type: string }

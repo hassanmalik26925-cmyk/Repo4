@@ -818,7 +818,7 @@ ${
           </div>
         ) : (
           (integrations.data ?? []).map((intg, idx, arr) => (
-            <div key={intg.platform}>
+            <div key={intg.id}>
               <IntegrationRow integration={intg} onToast={toast} />
               {idx < arr.length - 1 && (
                 <div className="mx-4 border-t border-[hsl(var(--card-border))]" />
@@ -1198,6 +1198,11 @@ function IntegrationRow({
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold">{integration.displayName}</span>
+            {integration.accountLabel && (
+              <span className="max-w-[180px] truncate rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {integration.accountLabel}
+              </span>
+            )}
             {PLATFORM_CATEGORY[integration.platform] && (
               <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                 {PLATFORM_CATEGORY[integration.platform]}
@@ -1231,7 +1236,16 @@ function IntegrationRow({
           {isConnected ? (
             <>
               <button
-                onClick={() => sync.mutate({ platform: integration.platform })}
+                type="button"
+                onClick={() => { setShowForm((s) => !s); setConnectErr(null); }}
+                className="inline-flex items-center justify-center rounded-full border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-600 hover:bg-sky-500/10 dark:text-sky-400"
+                aria-label={`Add another ${integration.displayName} account`}
+                title={`Add another ${integration.displayName} account`}
+              >
+                + <span className="ml-1 hidden sm:inline">Add account</span>
+              </button>
+              <button
+                onClick={() => sync.mutate({ integrationId: integration.id })}
                 disabled={sync.isPending}
                 className="rounded-full border border-[hsl(var(--card-border))] px-3 py-1 text-[11px] font-semibold hover-elevate disabled:opacity-50"
               >
@@ -1244,7 +1258,7 @@ function IntegrationRow({
                 )}
               </button>
               <button
-                onClick={() => disconnect.mutate({ platform: integration.platform })}
+                onClick={() => disconnect.mutate({ integrationId: integration.id })}
                 disabled={disconnect.isPending}
                 className="px-3 py-1 text-[11px] font-semibold text-red-500 disabled:opacity-50"
               >
@@ -1270,7 +1284,7 @@ function IntegrationRow({
         <ConnectionGuide guide={guide} platform={integration.platform} />
       )}
 
-      {showForm && !isConnected && (
+      {showForm && (
         <CredentialForm
           platform={integration.platform}
           pending={connect.isPending}
@@ -1384,6 +1398,17 @@ function CredentialForm({
       <p className="mb-2 text-[11px] text-muted-foreground">
         Credentials are AES-256-GCM encrypted before being stored.
       </p>
+      <label className="mb-2 flex flex-col gap-0.5 text-xs">
+        <span className="text-muted-foreground">Account name (optional)</span>
+        <input
+          type="text"
+          value={values.accountLabel ?? ""}
+          onChange={(e) => set("accountLabel", e.target.value)}
+          placeholder={`e.g. ${platform === "meta_ads" ? "US prospecting" : "Primary account"}`}
+          autoComplete="off"
+          className="rounded-lg border border-[hsl(var(--card-border))] bg-card px-2.5 py-1.5 text-xs"
+        />
+      </label>
       <div className="flex flex-col gap-2">
         {fields.map((f) => (
           <label key={f.key} className="flex flex-col gap-0.5 text-xs">

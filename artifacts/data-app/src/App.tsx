@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import { Store, Loader2 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
@@ -20,6 +20,13 @@ import { ToastContainer } from "./components/ToastContainer";
 import { useSSE } from "./hooks/useSSE";
 import { LegalPage } from "./pages/LegalPage";
 import { useTrafficTracking } from "./hooks/useTrafficTracking";
+import {
+  AuthenticateWithRedirectCallback,
+  SignIn,
+  SignUp,
+  useAuth as useClerkAuth,
+} from "@clerk/react";
+import { useEffect, useRef } from "react";
 
 function NoIntegrationScreen({ onGoToSettings }: { onGoToSettings: () => void }) {
   return (
@@ -154,6 +161,12 @@ function AuthenticatedApp() {
 function UnauthenticatedApp() {
   return (
     <Switch>
+      <Route path="/sign-in/sso-callback">
+        <AuthenticateWithRedirectCallback />
+      </Route>
+      <Route path="/sign-in/*?"><ClerkSignIn /></Route>
+      <Route path="/sign-up/*?"><ClerkSignUp /></Route>
+      <Route path="/auth/complete"><SocialAuthComplete /></Route>
       <Route path="/login"><LoginPage defaultMode="login" /></Route>
       <Route path="/register"><LoginPage defaultMode="register" /></Route>
       <Route path="/forgot-password"><LoginPage defaultMode="forgot" /></Route>
@@ -166,6 +179,78 @@ function UnauthenticatedApp() {
       {/* Fallback for unknown routes */}
       <Route><LandingPage /></Route>
     </Switch>
+  );
+}
+
+function ClerkSignIn() {
+  const basePath = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  if (window.location.pathname.endsWith("/sso-callback")) {
+    return <AuthenticateWithRedirectCallback />;
+  }
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+      <SignIn
+        routing="path"
+        path={`${basePath}/sign-in`}
+        signUpUrl={`${basePath}/sign-up`}
+        forceRedirectUrl={`${basePath}/auth/complete`}
+      />
+    </div>
+  );
+}
+
+function ClerkSignUp() {
+  const basePath = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+      <SignUp
+        routing="path"
+        path={`${basePath}/sign-up`}
+        signInUrl={`${basePath}/sign-in`}
+        forceRedirectUrl={`${basePath}/auth/complete`}
+      />
+    </div>
+  );
+}
+
+function SocialAuthComplete() {
+  const clerkAuth = useClerkAuth();
+  const { setSession } = useAuth();
+  const started = useRef(false);
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!clerkAuth.isLoaded || !clerkAuth.isSignedIn || started.current) return;
+    started.current = true;
+    const base = (import.meta.env.BASE_URL ?? "/").replace(/\/+$/, "");
+    fetch(`${base}/api/auth/clerk-exchange`, {
+      method: "POST",
+      credentials: "include",
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body.error ?? "Could not finish social sign-in");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setSession(data.token, data.user);
+        setLocation("/");
+      })
+      .catch(() => {
+        started.current = false;
+        setLocation("/login");
+      });
+  }, [clerkAuth.isLoaded, clerkAuth.isSignedIn, setLocation, setSession]);
+
+  if (clerkAuth.isLoaded && !clerkAuth.isSignedIn) {
+    return <Redirect to="/login" />;
+  }
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+      <Loader2 className="h-7 w-7 animate-spin text-primary" />
+    </div>
   );
 }
 

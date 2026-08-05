@@ -49,6 +49,9 @@ export const metaAdsAdapter: IntegrationAdapter = {
       throw new Error("Invalid Meta credentials");
     }
     const result: SyncResult = { ...ZERO_SYNC };
+    const integrationId = typeof credentials._integrationId === "string"
+      ? credentials._integrationId
+      : null;
     try {
       const campData = await metaFetch<{
         data: Array<{ id: string; name: string; status: string }>;
@@ -59,6 +62,7 @@ export const metaAdsAdapter: IntegrationAdapter = {
           .insert(adCampaignsTable)
           .values({
             userId,
+              integrationId,
             channel: "meta",
             externalId: c.id,
             name: c.name,
@@ -69,6 +73,7 @@ export const metaAdsAdapter: IntegrationAdapter = {
               adCampaignsTable.userId,
               adCampaignsTable.channel,
               adCampaignsTable.externalId,
+              adCampaignsTable.integrationId,
             ],
             set: { name: c.name, status: c.status.toLowerCase() },
           })
@@ -85,6 +90,7 @@ export const metaAdsAdapter: IntegrationAdapter = {
             .insert(adSetsTable)
             .values({
               userId,
+              integrationId,
               campaignId: row.id,
               channel: "meta",
               externalId: adSet.id,
@@ -92,7 +98,7 @@ export const metaAdsAdapter: IntegrationAdapter = {
               status: adSet.status?.toLowerCase() ?? "active",
             })
             .onConflictDoUpdate({
-              target: [adSetsTable.userId, adSetsTable.channel, adSetsTable.externalId],
+              target: [adSetsTable.userId, adSetsTable.channel, adSetsTable.externalId, adSetsTable.integrationId],
               set: { name: adSet.name, status: adSet.status?.toLowerCase() ?? "active", campaignId: row.id },
             })
             .returning({ id: adSetsTable.id });
@@ -118,6 +124,7 @@ export const metaAdsAdapter: IntegrationAdapter = {
               .insert(adSetMetricsTable)
               .values({
                 userId,
+                integrationId,
                 adSetId: adSetRow.id,
                 date: m.date_start,
                 spend: m.spend,
@@ -151,6 +158,7 @@ export const metaAdsAdapter: IntegrationAdapter = {
               .insert(adCreativesTable)
               .values({
                 userId,
+                integrationId,
                 adSetId: adSetRow.id,
                 campaignId: row.id,
                 channel: "meta",
@@ -160,7 +168,7 @@ export const metaAdsAdapter: IntegrationAdapter = {
                 status: ad.status?.toLowerCase() ?? "active",
               })
               .onConflictDoUpdate({
-                target: [adCreativesTable.userId, adCreativesTable.channel, adCreativesTable.externalId],
+                target: [adCreativesTable.userId, adCreativesTable.channel, adCreativesTable.externalId, adCreativesTable.integrationId],
                 set: {
                   name: ad.name || ad.creative?.name || ad.creative?.title || `Meta ad ${ad.id}`,
                   status: ad.status?.toLowerCase() ?? "active",
@@ -236,6 +244,7 @@ export const metaAdsAdapter: IntegrationAdapter = {
             .insert(adMetricsTable)
             .values({
               userId,
+              integrationId,
               campaignId: row.id,
               date: m.date_start,
               spend: m.spend,

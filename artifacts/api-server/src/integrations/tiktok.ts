@@ -73,6 +73,9 @@ export const tikTokAdapter: IntegrationAdapter = {
   async sync(userId, credentials) {
     if (!isTikTokCreds(credentials)) throw new Error("Invalid TikTok credentials");
     const result: SyncResult = { ...ZERO_SYNC };
+    const integrationId = typeof credentials._integrationId === "string"
+      ? credentials._integrationId
+      : null;
     const { startDate, endDate } = dateRange(90);
 
     // ── Campaigns ─────────────────────────────────────────────────────────────
@@ -89,13 +92,14 @@ export const tikTokAdapter: IntegrationAdapter = {
         .insert(adCampaignsTable)
         .values({
           userId,
+          integrationId,
           channel: "tiktok",
           externalId: c.campaign_id,
           name: c.campaign_name,
           status: c.operation_status?.toLowerCase() ?? "active",
         })
         .onConflictDoUpdate({
-          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId],
+          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId, adCampaignsTable.integrationId],
           set: { name: c.campaign_name, status: c.operation_status?.toLowerCase() ?? "active" },
         })
         .returning({ id: adCampaignsTable.id });

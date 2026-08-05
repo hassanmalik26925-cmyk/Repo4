@@ -93,6 +93,9 @@ export const microsoftAdsAdapter: IntegrationAdapter = {
   async sync(userId, credentials) {
     if (!isMicrosoftAdsCreds(credentials)) throw new Error("Invalid Microsoft Ads credentials");
     const result: SyncResult = { ...ZERO_SYNC };
+    const integrationId = typeof credentials._integrationId === "string"
+      ? credentials._integrationId
+      : null;
 
     const endDate = new Date();
     const startDate = new Date();
@@ -114,13 +117,14 @@ export const microsoftAdsAdapter: IntegrationAdapter = {
         .insert(adCampaignsTable)
         .values({
           userId,
+          integrationId,
           channel: "microsoft",
           externalId: String(c.Id),
           name: c.Name,
           status: c.Status?.toLowerCase() ?? "active",
         })
         .onConflictDoUpdate({
-          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId],
+          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId, adCampaignsTable.integrationId],
           set: { name: c.Name, status: c.Status?.toLowerCase() ?? "active" },
         })
         .returning({ id: adCampaignsTable.id });

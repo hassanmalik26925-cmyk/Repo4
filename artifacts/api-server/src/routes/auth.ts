@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { authIdentitiesTable, db, usersTable } from "@workspace/db";
+import { getAuth, clerkClient } from "@clerk/express";
+import { randomUUID } from "node:crypto";
 import {
   RegisterBody,
   LoginBody,
@@ -150,6 +152,92 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
       name: req.user.name,
       role: req.user.role,
       isDemo: row?.isDemo === "true",
+    }),
+  );
+});
+
+router.post("/auth/clerk-exchange", async (req, res): Promise<void> => {
+  const { userId: clerkUserId } = getAuth(req);
+  if (!clerkUserId) {
+    res.status(401).json({ error: "Complete social sign-in first" });
+    return;
+  }
+
+  const clerkUser = await clerkClient.users.getUser(clerkUserId);
+  const email = clerkUser.primaryEmailAddress?.emailAddress?.toLowerCase().trim();
+  if (!email) {
+    res.status(400).json({ error: "Your social account does not have an email address" });
+    return;
+  }
+  const provider = String(
+    clerkUser.externalAccounts[0]?.provider ?? "clerk",
+  ).replace(/^oauth_/, "");
+
+  let [identity] = await db
+    .select()
+    .from(authIdentitiesTable)
+    .where(eq(authIdentitiesTable.providerAccountId, clerkUserId));
+  let user = identity
+    ? (await db.select().from(usersTable).where(eq(usersTable.id, identity.userId)))[0]
+    : undefined;
+
+  if (!user) {
+    [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  }
+  if (!user) {
+    const name =
+      [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
+      email.split("@")[0] ||
+      "CommercePulse user";
+    [user] = await db
+      .insert(usersTable)
+      .values({
+        email,
+        name,
+        passwordHash: await hashPassword(randomUUID()),
+        isDemo: "false",
+      })
+      .onConflictDoNothing()
+      .returning();
+    if (!user) {
+      [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    }
+  }
+  if (!user) {
+    res.status(500).json({ error: "Failed to provision your account" });
+    return;
+  }
+
+  if (!identity) {
+    [identity] = await db
+      .insert(authIdentitiesTable)
+      .values({ userId: user.id, provider, providerAccountId: clerkUserId })
+      .onConflictDoNothing()
+      .returning();
+  }
+  if (user.isDemo === "true") await refreshDemoDataIfStale(user.id);
+  const { token, expiresAt } = signToken({
+    sub: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+  });
+  await ActivityService.log({
+    userId: user.id,
+    type: "auth.login",
+    title: `Signed in with ${provider}`,
+  });
+  res.json(
+    LoginResponse.parse({
+      token,
+      expiresAt,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        isDemo: user.isDemo === "true",
+      },
     }),
   );
 });

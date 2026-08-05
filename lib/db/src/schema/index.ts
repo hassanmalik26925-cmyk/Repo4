@@ -1,4 +1,5 @@
 export * from "./users";
+export * from "./authIdentities";
 export * from "./integrations";
 export * from "./customers";
 export * from "./products";

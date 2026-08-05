@@ -7,8 +7,16 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { DateRangeProvider } from "./contexts/DateRangeContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import { ClerkProvider } from "@clerk/react";
+import { publishableKeyFromHost } from "@clerk/react/internal";
 
 initApiClient();
+
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 
 const REFRESH_KEY = "pulse.data_refresh";
 
@@ -33,15 +41,22 @@ const queryClient = new QueryClient({
 });
 
 createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
-        <DateRangeProvider>
-          <NotificationProvider>
-            <App />
-          </NotificationProvider>
-        </DateRangeProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>,
+  <ClerkProvider
+    publishableKey={clerkPubKey}
+    proxyUrl={clerkProxyUrl}
+    signInUrl={`${(import.meta.env.BASE_URL ?? "/").replace(/\/$/, "")}/sign-in`}
+    signUpUrl={`${(import.meta.env.BASE_URL ?? "/").replace(/\/$/, "")}/sign-up`}
+  >
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
+          <DateRangeProvider>
+            <NotificationProvider>
+              <App />
+            </NotificationProvider>
+          </DateRangeProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ClerkProvider>,
 );

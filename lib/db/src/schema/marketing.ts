@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { usersTable } from "./users";
+import { integrationsTable } from "./integrations";
 
 export const adCampaignsTable = pgTable(
   "ad_campaigns",
@@ -20,6 +21,9 @@ export const adCampaignsTable = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
+    integrationId: text("integration_id").references(() => integrationsTable.id, {
+      onDelete: "set null",
+    }),
     channel: text("channel").notNull(),
     externalId: text("external_id").notNull(),
     name: text("name").notNull(),
@@ -37,6 +41,7 @@ export const adCampaignsTable = pgTable(
       t.userId,
       t.channel,
       t.externalId,
+      t.integrationId,
     ),
   }),
 );
@@ -53,6 +58,9 @@ export const adMetricsTable = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
+    integrationId: text("integration_id").references(() => integrationsTable.id, {
+      onDelete: "set null",
+    }),
     date: date("date").notNull(),
     impressions: integer("impressions").notNull().default(0),
     clicks: integer("clicks").notNull().default(0),
@@ -80,6 +88,9 @@ export const adSetsTable = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
+    integrationId: text("integration_id").references(() => integrationsTable.id, {
+      onDelete: "set null",
+    }),
     campaignId: text("campaign_id")
       .notNull()
       .references(() => adCampaignsTable.id, { onDelete: "cascade" }),
@@ -100,6 +111,7 @@ export const adSetsTable = pgTable(
       t.userId,
       t.channel,
       t.externalId,
+      t.integrationId,
     ),
     campaignIdx: index("ad_sets_campaign_idx").on(t.campaignId),
   }),
@@ -117,6 +129,9 @@ export const adSetMetricsTable = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
+    integrationId: text("integration_id").references(() => integrationsTable.id, {
+      onDelete: "set null",
+    }),
     date: date("date").notNull(),
     impressions: integer("impressions").notNull().default(0),
     clicks: integer("clicks").notNull().default(0),
@@ -141,6 +156,9 @@ export const adCreativesTable = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
+    integrationId: text("integration_id").references(() => integrationsTable.id, {
+      onDelete: "set null",
+    }),
     adSetId: text("ad_set_id")
       .notNull()
       .references(() => adSetsTable.id, { onDelete: "cascade" }),
@@ -165,6 +183,7 @@ export const adCreativesTable = pgTable(
       t.userId,
       t.channel,
       t.externalId,
+      t.integrationId,
     ),
     adSetIdx: index("ad_creatives_ad_set_idx").on(t.adSetId),
   }),

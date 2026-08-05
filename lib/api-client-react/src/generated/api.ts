@@ -2558,15 +2558,15 @@ export const useConnectIntegration = <
   return useMutation(getConnectIntegrationMutationOptions(options));
 };
 
-export const getDisconnectIntegrationUrl = (platform: string) => {
-  return `/api/integrations/${platform}/disconnect`;
+export const getDisconnectIntegrationUrl = (integrationId: string) => {
+  return `/api/integrations/${integrationId}/disconnect`;
 };
 
 export const disconnectIntegration = async (
-  platform: string,
+  integrationId: string,
   options?: RequestInit,
 ): Promise<Integration> => {
-  return customFetch<Integration>(getDisconnectIntegrationUrl(platform), {
+  return customFetch<Integration>(getDisconnectIntegrationUrl(integrationId), {
     ...options,
     method: "POST",
   });
@@ -2579,14 +2579,14 @@ export const getDisconnectIntegrationMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof disconnectIntegration>>,
     TError,
-    { platform: string },
+    { integrationId: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof disconnectIntegration>>,
   TError,
-  { platform: string },
+  { integrationId: string },
   TContext
 > => {
   const mutationKey = ["disconnectIntegration"];
@@ -2600,11 +2600,11 @@ export const getDisconnectIntegrationMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof disconnectIntegration>>,
-    { platform: string }
+    { integrationId: string }
   > = (props) => {
-    const { platform } = props ?? {};
+    const { integrationId } = props ?? {};
 
-    return disconnectIntegration(platform, requestOptions);
+    return disconnectIntegration(integrationId, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -2623,28 +2623,28 @@ export const useDisconnectIntegration = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof disconnectIntegration>>,
     TError,
-    { platform: string },
+    { integrationId: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof disconnectIntegration>>,
   TError,
-  { platform: string },
+  { integrationId: string },
   TContext
 > => {
   return useMutation(getDisconnectIntegrationMutationOptions(options));
 };
 
-export const getSyncIntegrationUrl = (platform: string) => {
-  return `/api/integrations/${platform}/sync`;
+export const getSyncIntegrationUrl = (integrationId: string) => {
+  return `/api/integrations/${integrationId}/sync`;
 };
 
 export const syncIntegration = async (
-  platform: string,
+  integrationId: string,
   options?: RequestInit,
 ): Promise<Integration> => {
-  return customFetch<Integration>(getSyncIntegrationUrl(platform), {
+  return customFetch<Integration>(getSyncIntegrationUrl(integrationId), {
     ...options,
     method: "POST",
   });
@@ -2657,14 +2657,14 @@ export const getSyncIntegrationMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof syncIntegration>>,
     TError,
-    { platform: string },
+    { integrationId: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof syncIntegration>>,
   TError,
-  { platform: string },
+  { integrationId: string },
   TContext
 > => {
   const mutationKey = ["syncIntegration"];
@@ -2678,11 +2678,11 @@ export const getSyncIntegrationMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof syncIntegration>>,
-    { platform: string }
+    { integrationId: string }
   > = (props) => {
-    const { platform } = props ?? {};
+    const { integrationId } = props ?? {};
 
-    return syncIntegration(platform, requestOptions);
+    return syncIntegration(integrationId, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -2701,14 +2701,14 @@ export const useSyncIntegration = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof syncIntegration>>,
     TError,
-    { platform: string },
+    { integrationId: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof syncIntegration>>,
   TError,
-  { platform: string },
+  { integrationId: string },
   TContext
 > => {
   return useMutation(getSyncIntegrationMutationOptions(options));

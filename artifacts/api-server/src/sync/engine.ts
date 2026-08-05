@@ -92,9 +92,9 @@ async function hasEverSynced(userId: string): Promise<boolean> {
 
 export async function runSyncFor(
   userId: string,
-  platform: string,
+  integrationId: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  const syncKey = `${userId}:${platform}`;
+  const syncKey = `${userId}:${integrationId}`;
   if (inFlightSyncs.has(syncKey)) {
     return { ok: false, error: "A sync is already running for this integration." };
   }
@@ -106,19 +106,22 @@ export async function runSyncFor(
     .where(
       and(
         eq(integrationsTable.userId, userId),
-        eq(integrationsTable.platform, platform),
+        eq(integrationsTable.id, integrationId),
       ),
     );
   if (!integration || integration.status !== "connected") {
     inFlightSyncs.delete(syncKey);
     return { ok: false, error: "Not connected" };
   }
-  const adapter = getAdapter(platform);
+  const adapter = getAdapter(integration.platform);
   if (!adapter || !integration.credentials) {
     inFlightSyncs.delete(syncKey);
     return { ok: false, error: "No adapter or credentials" };
   }
-  const creds = decryptJson<Record<string, unknown>>(integration.credentials);
+  const creds = {
+    ...decryptJson<Record<string, unknown>>(integration.credentials),
+    _integrationId: integration.id,
+  };
 
   // Track whether this is the user's very first real sync
   const isFirstEverSync = !(await hasEverSynced(userId));
@@ -128,7 +131,7 @@ export async function runSyncFor(
   let lastErr: unknown;
   while (attempt < RETRY_LIMIT) {
     try {
-      const r = await adapter.sync(userId, creds);
+       const r = await adapter.sync(userId, creds);
 
       // On the first real sync ever, wipe all seed/demo data so real data
       // is the only source of truth in the dashboard.
@@ -157,16 +160,16 @@ export async function runSyncFor(
       OrderService.sendPendingReceipts(userId).catch((err) =>
         logger.error({ err, userId }, "Receipt send failed after sync"),
       );
-      logger.info({ userId, platform, result: r }, "Sync ok");
+       logger.info({ userId, platform: integration.platform, integrationId, result: r }, "Sync ok");
       inFlightSyncs.delete(syncKey);
       return { ok: true };
     } catch (err) {
       lastErr = err;
       attempt += 1;
-      logger.warn({ err, attempt, platform }, "Sync attempt failed");
+      logger.warn({ err, attempt, platform: integration.platform }, "Sync attempt failed");
     }
   }
-  const msg = lastErr instanceof Error ? lastErr.message : "Sync failed";
+   const msg = lastErr instanceof Error ? lastErr.message : "Sync failed";
   await db
     .update(integrationsTable)
     .set({ lastError: msg, status: "error" })
@@ -174,7 +177,7 @@ export async function runSyncFor(
   await ActivityService.log({
     userId,
     type: "sync.failed",
-    title: `${platform} sync failed`,
+     title: `${integration.platform} sync failed`,
     description: msg,
     entityType: "integration",
     entityId: integration.id,
@@ -199,7 +202,7 @@ export function startScheduler(intervalMinutes = 15): void {
         .from(integrationsTable)
         .where(eq(integrationsTable.status, "connected"));
       for (const i of due) {
-        await runSyncFor(i.userId, i.platform).catch((err) => {
+        await runSyncFor(i.userId, i.id).catch((err) => {
           logger.error({ err, integrationId: i.id }, "Scheduled sync error");
         });
       }

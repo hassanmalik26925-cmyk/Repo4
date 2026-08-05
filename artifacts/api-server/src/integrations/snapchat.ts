@@ -81,6 +81,9 @@ export const snapchatAdapter: IntegrationAdapter = {
   async sync(userId, credentials) {
     if (!isSnapchatCreds(credentials)) throw new Error("Invalid Snapchat credentials");
     const result: SyncResult = { ...ZERO_SYNC };
+    const integrationId = typeof credentials._integrationId === "string"
+      ? credentials._integrationId
+      : null;
 
     const campsData = await withRetry("snapchat:campaigns", () =>
       snapFetch<{ campaigns: Array<{ campaign: { id: string; name: string; status: string } }> }>(
@@ -99,13 +102,14 @@ export const snapchatAdapter: IntegrationAdapter = {
         .insert(adCampaignsTable)
         .values({
           userId,
+          integrationId,
           channel: "snapchat",
           externalId: c.id,
           name: c.name,
           status: c.status?.toLowerCase() ?? "active",
         })
         .onConflictDoUpdate({
-          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId],
+          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId, adCampaignsTable.integrationId],
           set: { name: c.name, status: c.status?.toLowerCase() ?? "active" },
         })
         .returning({ id: adCampaignsTable.id });

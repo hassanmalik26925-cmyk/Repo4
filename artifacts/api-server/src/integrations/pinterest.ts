@@ -59,6 +59,9 @@ export const pinterestAdapter: IntegrationAdapter = {
   async sync(userId, credentials) {
     if (!isPinterestCreds(credentials)) throw new Error("Invalid Pinterest credentials");
     const result: SyncResult = { ...ZERO_SYNC };
+    const integrationId = typeof credentials._integrationId === "string"
+      ? credentials._integrationId
+      : null;
 
     const camps = await withRetry("pinterest:campaigns", () =>
       pinFetch<{ items: Array<{ id: string; name: string; status: string }> }>(
@@ -77,13 +80,14 @@ export const pinterestAdapter: IntegrationAdapter = {
         .insert(adCampaignsTable)
         .values({
           userId,
+          integrationId,
           channel: "pinterest",
           externalId: c.id,
           name: c.name,
           status: c.status?.toLowerCase() ?? "active",
         })
         .onConflictDoUpdate({
-          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId],
+          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId, adCampaignsTable.integrationId],
           set: { name: c.name, status: c.status?.toLowerCase() ?? "active" },
         })
         .returning({ id: adCampaignsTable.id });

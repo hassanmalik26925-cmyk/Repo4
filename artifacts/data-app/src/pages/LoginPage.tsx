@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity as ActivityIcon, Loader2, Sparkles, ArrowLeft, KeyRound, Mail, Lock } from "lucide-react";
+import { Activity as ActivityIcon, Loader2, Sparkles, ArrowLeft, KeyRound, Mail, Lock, Chrome, Facebook, Twitter } from "lucide-react";
 import { useLogin, useRegister, useForgotPassword, useResetPassword } from "@workspace/api-client-react";
 import { useAuth } from "../contexts/AuthContext";
 import { friendlyError } from "../lib/errors";
+import { useSignIn, useSignUp } from "@clerk/react";
 
 type Mode = "login" | "register" | "forgot" | "reset";
 
@@ -18,6 +19,9 @@ export function LoginPage({ defaultMode = "login" }: { defaultMode?: Mode }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [, setLocation] = useLocation();
+  const { signIn } = useSignIn();
+  const { signUp } = useSignUp();
 
   const login = useLogin({
     mutation: {
@@ -54,6 +58,25 @@ export function LoginPage({ defaultMode = "login" }: { defaultMode?: Mode }) {
       onError: (err: Error) => setError(friendlyError(err)),
     },
   });
+
+  async function startSocialSignIn(provider: "google" | "x") {
+    setError(null);
+    const basePath = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+    const params = {
+      strategy: `oauth_${provider}` as const,
+      redirectUrl: `${basePath}/auth/complete`,
+      redirectCallbackUrl: `${basePath}/sign-in/sso-callback`,
+    };
+    try {
+      if (mode === "register") {
+        await signUp.sso(params);
+      } else {
+        await signIn.sso(params);
+      }
+    } catch (err) {
+      setError(friendlyError(err as Error));
+    }
+  }
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -117,6 +140,36 @@ export function LoginPage({ defaultMode = "login" }: { defaultMode?: Mode }) {
               </p>
             </div>
           </div>
+
+          {(mode === "login" || mode === "register") && (
+            <div className="mb-6 grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => void startSocialSignIn("google")}
+                className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-background/60 text-xs font-semibold hover:bg-muted"
+                data-testid="btn-social-google"
+              >
+                <Chrome className="h-3.5 w-3.5" /> Google
+              </button>
+              <button
+                type="button"
+                disabled
+                title="Facebook sign-in is not available in the managed authentication setup"
+                className="flex h-10 cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/40 text-xs font-semibold text-muted-foreground/60"
+                data-testid="btn-social-facebook"
+              >
+                <Facebook className="h-3.5 w-3.5" /> Facebook
+              </button>
+              <button
+                type="button"
+                onClick={() => void startSocialSignIn("x")}
+                className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-background/60 text-xs font-semibold hover:bg-muted"
+                data-testid="btn-social-x"
+              >
+                <Twitter className="h-3.5 w-3.5" /> X
+              </button>
+            </div>
+          )}
 
           <form onSubmit={submit} className="flex flex-col gap-4">
             <AnimatePresence mode="popLayout">

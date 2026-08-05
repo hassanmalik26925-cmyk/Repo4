@@ -74,6 +74,9 @@ export const klaviyoAdapter: IntegrationAdapter = {
   async sync(userId, credentials) {
     if (!isKlaviyoCreds(credentials)) throw new Error("Invalid Klaviyo credentials");
     const result: SyncResult = { ...ZERO_SYNC };
+    const integrationId = typeof credentials._integrationId === "string"
+      ? credentials._integrationId
+      : null;
 
     const since = new Date();
     since.setDate(since.getDate() - 90);
@@ -92,13 +95,14 @@ export const klaviyoAdapter: IntegrationAdapter = {
         .insert(adCampaignsTable)
         .values({
           userId,
+          integrationId,
           channel: "email",
           externalId: c.id,
           name: attr.name,
           status: attr.status?.toLowerCase() ?? "sent",
         })
         .onConflictDoUpdate({
-          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId],
+          target: [adCampaignsTable.userId, adCampaignsTable.channel, adCampaignsTable.externalId, adCampaignsTable.integrationId],
           set: { name: attr.name, status: attr.status?.toLowerCase() ?? "sent" },
         })
         .returning({ id: adCampaignsTable.id });
