@@ -61,7 +61,7 @@ interface ReportsPageProps {
 type ReportSection = "overview" | "sales" | "profitability" | "marketing" | "customers" | "products" | "channels" | "traffic" | "exports";
 type SortKey = "totalAmount" | "profit";
 export type InsightActionTarget = {
-  screen?: "dashboard" | "orders" | "reports" | "marketing" | "products" | "settings";
+  screen?: "dashboard" | "orders" | "reports" | "marketing" | "products" | "intelligence" | "settings";
   section?: string;
   entityId?: string;
   focus?: string;

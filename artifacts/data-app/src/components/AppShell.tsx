@@ -2,19 +2,20 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity as ActivityIcon, LayoutGrid, ShoppingBag, Megaphone,
-  Package, Settings as SettingsIcon, Sun, Moon, Calendar, Shield, Check, BarChart3,
+  Package, Settings as SettingsIcon, Sun, Moon, Calendar, Shield, Check, BarChart3, Brain,
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { RANGE_OPTIONS, RANGE_LABELS, type RangeKey, useDateRange } from "../contexts/DateRangeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { NotificationBell } from "./NotificationBell";
 
-export type Screen = "dashboard" | "orders" | "reports" | "marketing" | "products" | "settings" | "admin";
+export type Screen = "dashboard" | "orders" | "reports" | "marketing" | "products" | "intelligence" | "settings" | "admin";
 
 const navItems: { key: Screen; label: string; icon: ReactNode }[] = [
   { key: "dashboard", label: "Dashboard", icon: <LayoutGrid className="h-[22px] w-[22px]" /> },
   { key: "orders", label: "Orders", icon: <ShoppingBag className="h-[22px] w-[22px]" /> },
   { key: "reports", label: "Reports", icon: <BarChart3 className="h-[22px] w-[22px]" /> },
+  { key: "intelligence", label: "Intelligence", icon: <Brain className="h-[22px] w-[22px]" /> },
   { key: "marketing", label: "Marketing", icon: <Megaphone className="h-[22px] w-[22px]" /> },
   { key: "products", label: "Products", icon: <Package className="h-[22px] w-[22px]" /> },
   { key: "settings", label: "Settings", icon: <SettingsIcon className="h-[22px] w-[22px]" /> },

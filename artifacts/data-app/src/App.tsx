@@ -13,6 +13,7 @@ import { MarketingPage } from "./pages/MarketingPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { AdminPage } from "./pages/AdminPage";
+import { IntelligencePage } from "./pages/IntelligencePage";
 import { BottomNav, ScreenContainer, TopBar, type Screen } from "./components/AppShell";
 import { useListIntegrations, useGetOnboardingStatus } from "@workspace/api-client-react";
 import { SetupPage } from "./pages/SetupPage";
@@ -115,6 +116,7 @@ function AuthenticatedApp() {
         {screen === "dashboard" && <DashboardPage onNavigate={handleInsightNavigation} hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "orders" && <OrdersPage hasConnected={hasConnected} onGoToSettings={() => setScreen("settings")} />}
         {screen === "reports" && <ReportsPage hasConnected={hasConnected} initialSection={reportSection} onNavigateInsight={handleInsightNavigation} onGoToSettings={() => setScreen("settings")} />}
+        {screen === "intelligence" && <IntelligencePage hasConnected={hasConnected} onNavigate={handleInsightNavigation} />}
         {screen === "marketing" && <MarketingPage hasConnected={hasConnected} focusId={marketingFocus} onGoToSettings={() => setScreen("settings")} />}
         {screen === "products" && <ProductsPage hasConnected={hasConnected} focusId={productFocus.id} focus={productFocus.focus} onGoToSettings={() => setScreen("settings")} />}
         {screen === "admin" && <AdminPage />}
