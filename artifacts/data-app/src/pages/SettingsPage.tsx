@@ -35,6 +35,10 @@ import {
   Server,
   BookOpen,
   ExternalLink,
+  Plus,
+  Megaphone,
+  Truck,
+  CreditCard,
 } from "lucide-react";
 import {
   useGetSettings,
@@ -109,18 +113,57 @@ const PLATFORM_CATEGORY: Record<string, string> = {
   woocommerce: "Store",
   amazon: "Store",
   ebay: "Store",
-  meta_ads: "Ads",
-  google_ads: "Ads",
-  tiktok: "Ads",
-  pinterest: "Ads",
-  snapchat: "Ads",
-  microsoft_ads: "Ads",
-  klaviyo: "Email",
-  stripe: "Payments",
-  paypal: "Payments",
+  meta_ads: "Marketing",
+  google_ads: "Marketing",
+  tiktok: "Marketing",
+  pinterest: "Marketing",
+  snapchat: "Marketing",
+  microsoft_ads: "Marketing",
+  klaviyo: "Marketing",
+  stripe: "Payment",
+  paypal: "Payment",
   shipstation: "Shipping",
-  supplier: "Supplier",
+  supplier: "Store",
 };
+
+const INTEGRATION_GROUPS = [
+  {
+    key: "store",
+    label: "Store",
+    description: "Connect storefronts, marketplaces, and supplier data.",
+    platforms: ["shopify", "woocommerce", "amazon", "ebay", "supplier"],
+    icon: <ShoppingBasket className="h-4 w-4" />,
+    bg: "#D1FAE5",
+    fg: "#059669",
+  },
+  {
+    key: "marketing",
+    label: "Marketing",
+    description: "Add multiple ad accounts and email marketing sources.",
+    platforms: ["meta_ads", "google_ads", "tiktok", "pinterest", "snapchat", "microsoft_ads", "klaviyo"],
+    icon: <Megaphone className="h-4 w-4" />,
+    bg: "#EDE9FE",
+    fg: "#7C3AED",
+  },
+  {
+    key: "shipping",
+    label: "Shipping",
+    description: "Bring shipping providers and delivery costs into reporting.",
+    platforms: ["shipstation"],
+    icon: <Truck className="h-4 w-4" />,
+    bg: "#D1FAE5",
+    fg: "#059669",
+  },
+  {
+    key: "payment",
+    label: "Payment",
+    description: "Connect payment providers to reconcile transaction data.",
+    platforms: ["stripe", "paypal"],
+    icon: <CreditCard className="h-4 w-4" />,
+    bg: "#EEF2FF",
+    fg: "#4F46E5",
+  },
+] as const;
 
 // ── Credential field definitions ──────────────────────────────────────────────
 
@@ -811,22 +854,56 @@ ${
       {/* ── Integrations ───────────────────────────────────────────── */}
       <SectionLabel label="Integrations" />
       <MeasurementSourcesGuide />
-      <div className="mb-5 overflow-hidden rounded-2xl border border-[hsl(var(--card-border))] bg-card">
-        {integrations.isLoading ? (
-          <div className="p-4">
-            <Skeleton className="h-32" />
-          </div>
-        ) : (
-          (integrations.data ?? []).map((intg, idx, arr) => (
-            <div key={intg.id}>
-              <IntegrationRow integration={intg} onToast={toast} />
-              {idx < arr.length - 1 && (
-                <div className="mx-4 border-t border-[hsl(var(--card-border))]" />
-              )}
-            </div>
-          ))
-        )}
-      </div>
+      {integrations.isLoading ? (
+        <div className="mb-5 rounded-2xl border border-[hsl(var(--card-border))] bg-card p-4">
+          <Skeleton className="h-56" />
+        </div>
+      ) : (
+        <div className="mb-5 grid gap-4 lg:grid-cols-2">
+          {INTEGRATION_GROUPS.map((group) => {
+            const groupIntegrations = (integrations.data ?? []).filter((intg) =>
+              group.platforms.some((platform) => platform === intg.platform),
+            );
+            const connectedCount = groupIntegrations.filter(
+              (intg) => intg.status === "connected",
+            ).length;
+
+            return (
+              <section
+                key={group.key}
+                className="overflow-hidden rounded-2xl border border-[hsl(var(--card-border))] bg-card"
+              >
+                <div className="flex items-start gap-3 border-b border-[hsl(var(--card-border))] px-4 py-4">
+                  <SettingIcon bg={group.bg} fg={group.fg}>
+                    {group.icon}
+                  </SettingIcon>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-sm font-bold">{group.label}</h2>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                        {connectedCount} connected
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                      {group.description}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  {groupIntegrations.map((intg, index) => (
+                    <div key={intg.id}>
+                      <IntegrationRow integration={intg} onToast={toast} />
+                      {index < groupIntegrations.length - 1 && (
+                        <div className="mx-4 border-t border-[hsl(var(--card-border))]" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Shipping rates ─────────────────────────────────────────── */}
       <SectionLabel label="Shipping Rates" />
@@ -1233,17 +1310,22 @@ function IntegrationRow({
             <BookOpen className="h-3 w-3" />
             {showGuide ? "Hide guide" : "How to connect"}
           </button>
+          <button
+            type="button"
+            onClick={() => { setShowForm((s) => !s); setConnectErr(null); }}
+            className={`inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+              showForm
+                ? "bg-muted text-foreground"
+                : "border border-sky-500/40 text-sky-600 hover:bg-sky-500/10 dark:text-sky-400"
+            }`}
+            aria-label={`Add another ${integration.displayName} account`}
+            title={`Add another ${integration.displayName} account`}
+          >
+            <Plus className="h-3 w-3" />
+            <span className="hidden sm:inline">{showForm ? "Cancel" : "Add account"}</span>
+          </button>
           {isConnected ? (
             <>
-              <button
-                type="button"
-                onClick={() => { setShowForm((s) => !s); setConnectErr(null); }}
-                className="inline-flex items-center justify-center rounded-full border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-600 hover:bg-sky-500/10 dark:text-sky-400"
-                aria-label={`Add another ${integration.displayName} account`}
-                title={`Add another ${integration.displayName} account`}
-              >
-                + <span className="ml-1 hidden sm:inline">Add account</span>
-              </button>
               <button
                 onClick={() => sync.mutate({ integrationId: integration.id })}
                 disabled={sync.isPending}
@@ -1265,18 +1347,7 @@ function IntegrationRow({
                 Disconnect
               </button>
             </>
-          ) : (
-            <button
-              onClick={() => { setShowForm((s) => !s); setConnectErr(null); }}
-              className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${
-                showForm
-                  ? "bg-muted text-foreground"
-                  : "bg-sky-500 text-white hover:bg-sky-600"
-              }`}
-            >
-              {showForm ? "Cancel" : "Connect"}
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
 
