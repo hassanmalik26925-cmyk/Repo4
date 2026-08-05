@@ -285,6 +285,12 @@ export interface MarketingSummary {
   impressions: number;
 }
 
+export interface MarketingTrendPoint {
+  date: string;
+  spend: number;
+  revenue: number;
+}
+
 export interface Campaign {
   id: string;
   name: string;
@@ -615,6 +621,10 @@ export type ListProductsParams = {
 };
 
 export type GetMarketingSummaryParams = {
+  range?: RangeParamParameter;
+};
+
+export type GetMarketingTrendParams = {
   range?: RangeParamParameter;
 };
 

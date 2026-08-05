@@ -448,6 +448,23 @@ export const GetMarketingSummaryResponse = zod.object({
   impressions: zod.number(),
 });
 
+export const getMarketingTrendQueryRangeDefault = `30d`;
+
+export const GetMarketingTrendQueryParams = zod.object({
+  range: zod
+    .enum(["7d", "14d", "30d", "90d"])
+    .default(getMarketingTrendQueryRangeDefault),
+});
+
+export const GetMarketingTrendResponseItem = zod.object({
+  date: zod.coerce.date(),
+  spend: zod.number(),
+  revenue: zod.number(),
+});
+export const GetMarketingTrendResponse = zod.array(
+  GetMarketingTrendResponseItem,
+);
+
 export const listCampaignsQueryRangeDefault = `30d`;
 
 export const ListCampaignsQueryParams = zod.object({

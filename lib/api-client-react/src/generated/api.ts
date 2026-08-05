@@ -39,6 +39,7 @@ import type {
   GetInsightsSummaryParams,
   GetMarketingByChannelParams,
   GetMarketingSummaryParams,
+  GetMarketingTrendParams,
   GetRevenueByPlatformParams,
   GetRevenueTrendParams,
   HealthStatus,
@@ -56,6 +57,7 @@ import type {
   ListTrafficEventsParams,
   LoginBody,
   MarketingSummary,
+  MarketingTrendPoint,
   NotificationsResponse,
   OnboardingStatus,
   OrderDetail,
@@ -2129,6 +2131,96 @@ export function useGetMarketingSummary<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetMarketingSummaryQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetMarketingTrendUrl = (params?: GetMarketingTrendParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/marketing/trend?${stringifiedParams}`
+    : `/api/marketing/trend`;
+};
+
+export const getMarketingTrend = async (
+  params?: GetMarketingTrendParams,
+  options?: RequestInit,
+): Promise<MarketingTrendPoint[]> => {
+  return customFetch<MarketingTrendPoint[]>(getGetMarketingTrendUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMarketingTrendQueryKey = (
+  params?: GetMarketingTrendParams,
+) => {
+  return [`/api/marketing/trend`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetMarketingTrendQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMarketingTrend>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetMarketingTrendParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMarketingTrend>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMarketingTrendQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMarketingTrend>>
+  > = ({ signal }) => getMarketingTrend(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMarketingTrend>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMarketingTrendQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMarketingTrend>>
+>;
+export type GetMarketingTrendQueryError = ErrorType<unknown>;
+
+export function useGetMarketingTrend<
+  TData = Awaited<ReturnType<typeof getMarketingTrend>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetMarketingTrendParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMarketingTrend>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMarketingTrendQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

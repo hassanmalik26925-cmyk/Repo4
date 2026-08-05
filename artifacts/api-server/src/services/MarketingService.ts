@@ -103,6 +103,48 @@ export class MarketingService {
     };
   }
 
+  static async trend(
+    userId: string,
+    win: DateWindow,
+  ): Promise<Array<{ date: string; spend: number; revenue: number }>> {
+    const rows = await db
+      .select({
+        date: sql<string>`to_char(${adMetricsTable.date}, 'YYYY-MM-DD')`,
+        spend: sql<string>`COALESCE(SUM(${adMetricsTable.spend}), 0)`,
+        revenue: sql<string>`COALESCE(SUM(${adMetricsTable.revenue}), 0)`,
+      })
+      .from(adMetricsTable)
+      .where(
+        and(
+          eq(adMetricsTable.userId, userId),
+          sql`${adMetricsTable.date} >= ${win.from.toISOString().slice(0, 10)}`,
+          sql`${adMetricsTable.date} <= ${win.to.toISOString().slice(0, 10)}`,
+        ),
+      )
+      .groupBy(sql`to_char(${adMetricsTable.date}, 'YYYY-MM-DD')`);
+
+    const byDate = new Map(
+      rows.map((row) => [
+        row.date,
+        { spend: Number(row.spend), revenue: Number(row.revenue) },
+      ]),
+    );
+
+    const trend: Array<{ date: string; spend: number; revenue: number }> = [];
+    for (let index = 0; index <= win.days; index += 1) {
+      const date = new Date(win.from);
+      date.setUTCDate(win.from.getUTCDate() + index);
+      const key = date.toISOString().slice(0, 10);
+      const point = byDate.get(key);
+      trend.push({
+        date: key,
+        spend: point?.spend ?? 0,
+        revenue: point?.revenue ?? 0,
+      });
+    }
+    return trend;
+  }
+
   static async campaigns(
     userId: string,
     win: DateWindow,

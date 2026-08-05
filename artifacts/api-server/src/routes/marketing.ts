@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import {
   GetMarketingSummaryResponse,
+  GetMarketingTrendResponse,
   ListCampaignsResponse,
   GetMarketingByChannelResponse,
 } from "@workspace/api-zod";
@@ -15,6 +16,12 @@ router.get("/marketing/summary", async (req, res): Promise<void> => {
   const userId = req.user!.sub;
   const win = dateWindow(parseRange(req.query.range));
   res.json(GetMarketingSummaryResponse.parse(await MarketingService.summary(userId, win)));
+});
+
+router.get("/marketing/trend", async (req, res): Promise<void> => {
+  const userId = req.user!.sub;
+  const win = dateWindow(parseRange(req.query.range));
+  res.json(GetMarketingTrendResponse.parse(await MarketingService.trend(userId, win)));
 });
 
 router.get("/marketing/campaigns", async (req, res): Promise<void> => {

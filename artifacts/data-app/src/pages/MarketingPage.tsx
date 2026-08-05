@@ -1,10 +1,13 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
+  Activity,
+  ArrowUpRight,
   BarChart3,
   ChevronDown,
   CircleAlert,
   Megaphone,
   Palette,
+  Radio,
   Target,
   Trophy,
 } from "lucide-react";
@@ -12,6 +15,7 @@ import {
   useGetInsightsSummary,
   useGetMarketingByChannel,
   useGetMarketingSummary,
+  useGetMarketingTrend,
   useListCampaigns,
 } from "@workspace/api-client-react";
 import { useDateRange, RANGE_LABELS } from "../contexts/DateRangeContext";
@@ -73,6 +77,7 @@ export function MarketingPage({
   const summary = useGetMarketingSummary({ range }, { query: { enabled: hasConnected, queryKey: ["marketing", "summary", range] } });
   const campaigns = useListCampaigns({ range }, { query: { enabled: hasConnected, queryKey: ["marketing", "campaigns", range] } });
   const channels = useGetMarketingByChannel({ range }, { query: { enabled: hasConnected, queryKey: ["marketing", "channels", range] } });
+  const trend = useGetMarketingTrend({ range: "14d" }, { query: { enabled: hasConnected, queryKey: ["marketing", "trend", "14d"] } });
   const insightsSummary = useGetInsightsSummary({ range }, { query: { enabled: hasConnected, queryKey: ["marketing", "highlights", range] } });
 
   const s = summary.data;
@@ -92,7 +97,7 @@ export function MarketingPage({
   );
 
   const maxChannelSpend = Math.max(...(channels.data ?? []).map((channel) => channel.spend), 1);
-  const hasError = summary.isError || campaigns.isError || channels.isError || insightsSummary.isError;
+  const hasError = summary.isError || campaigns.isError || channels.isError || trend.isError || insightsSummary.isError;
 
   return (
     <AnimatedPage>
@@ -154,44 +159,16 @@ export function MarketingPage({
               </div>
             )}
 
-            <section className="mt-5 overflow-hidden border border-slate-800 bg-slate-950 text-slate-50 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.7)] dark:border-slate-700" data-testid="section-marketing-overview">
-              <div className="grid lg:grid-cols-[1.15fr_1fr]">
-                <div className="relative overflow-hidden border-b border-slate-800 p-5 sm:p-7 lg:border-b-0 lg:border-r">
-                  <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full border-[36px] border-lime-300/10" />
-                  <div className="relative">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Paid media return</div>
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-lime-300">
-                        <span className="h-1.5 w-1.5 rounded-full bg-lime-300" /> Synced data
-                      </span>
-                    </div>
-                    {summary.isLoading ? (
-                      <div className="mt-6 h-14 w-44 animate-pulse bg-slate-800" />
-                    ) : (
-                      <div className="mt-4 flex items-end gap-3">
-                        <div className="text-5xl font-bold tracking-[-0.07em] text-lime-300 sm:text-6xl" data-testid="text-marketing-roas">
-                          {s ? `${s.roas.toFixed(2)}x` : "—"}
-                        </div>
-                        <div className="mb-1 text-xs text-slate-400">blended ROAS</div>
-                      </div>
-                    )}
-                    <p className="mt-3 max-w-md text-xs leading-relaxed text-slate-400">
-                      Revenue generated for every unit of paid spend across connected acquisition channels.
-                    </p>
-                    <div className="mt-7 flex flex-wrap gap-x-8 gap-y-4 border-t border-slate-800 pt-4">
-                      <HeroMetric label="Ad revenue" value={s ? formatCompact(s.adRevenue) : "—"} loading={summary.isLoading} testId="text-marketing-revenue" />
-                      <HeroMetric label="Ad spend" value={s ? formatCompact(s.adSpend) : "—"} loading={summary.isLoading} testId="text-marketing-spend" />
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 sm:grid-cols-4 sm:divide-y-0">
-                  <DarkMetric label="CPA" value={s ? fmt(s.cpa) : "—"} loading={summary.isLoading} />
-                  <DarkMetric label="CTR" value={s ? `${s.ctr.toFixed(2)}%` : "—"} loading={summary.isLoading} />
-                  <DarkMetric label="Conversions" value={s ? formatNumber(s.conversions) : "—"} loading={summary.isLoading} />
-                  <DarkMetric label="Clicks" value={s ? formatNumber(s.clicks) : "—"} loading={summary.isLoading} />
-                </div>
-              </div>
-            </section>
+            <AdsIntelligencePanel
+              summary={s}
+              summaryLoading={summary.isLoading}
+              platforms={channels.data ?? []}
+              platformsLoading={channels.isLoading}
+              trend={trend.data ?? []}
+              trendLoading={trend.isLoading}
+              formatCurrency={fmt}
+              formatCompact={formatCompact}
+            />
 
             <div className="mt-6 grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
               <section className="border border-border bg-card" data-testid="section-channel-efficiency">
@@ -303,20 +280,185 @@ export function MarketingPage({
   );
 }
 
-function HeroMetric({ label, value, loading, testId }: { label: string; value: string; loading: boolean; testId: string }) {
+type AdsPlatform = { channel: string; spend: number; revenue: number };
+type AdsTrendPoint = { date: string; spend: number; revenue: number };
+
+function AdsIntelligencePanel({
+  summary,
+  summaryLoading,
+  platforms,
+  platformsLoading,
+  trend,
+  trendLoading,
+  formatCurrency,
+  formatCompact,
+}: {
+  summary?: {
+    adSpend: number;
+    adRevenue: number;
+    roas: number;
+    cpa: number;
+    ctr: number;
+    conversions: number;
+  };
+  summaryLoading: boolean;
+  platforms: AdsPlatform[];
+  platformsLoading: boolean;
+  trend: AdsTrendPoint[];
+  trendLoading: boolean;
+  formatCurrency: (value: number) => string;
+  formatCompact: (value: number) => string;
+}) {
+  const activePlatforms = platforms.filter((platform) => platform.spend > 0 || platform.revenue > 0);
+  const platformCount = activePlatforms.length;
+  const hasTrendData = trend.some((point) => point.spend > 0 || point.revenue > 0);
+  const metrics = [
+    { label: "Spend", value: summary ? formatCompact(summary.adSpend) : "—", id: "spend" },
+    { label: "Attributed revenue", value: summary ? formatCompact(summary.adRevenue) : "—", id: "revenue" },
+    { label: "ROAS", value: summary ? `${summary.roas.toFixed(2)}x` : "—", id: "roas" },
+    { label: "CPA", value: summary ? formatCurrency(summary.cpa) : "—", id: "cpa" },
+    { label: "CTR", value: summary ? `${summary.ctr.toFixed(2)}%` : "—", id: "ctr" },
+    { label: "Conversions", value: summary ? formatNumber(summary.conversions) : "—", id: "conversions" },
+  ];
+
   return (
-    <div data-testid={testId}>
-      <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</div>
-      {loading ? <div className="mt-1 h-5 w-20 animate-pulse bg-slate-800" /> : <div className="mt-1 text-lg font-semibold tabular-nums text-slate-100">{value}</div>}
-    </div>
+    <section
+      className="mt-5 overflow-hidden border border-slate-700/90 bg-[#111820] text-slate-100 shadow-[0_20px_55px_-32px_rgba(15,23,42,0.9)]"
+      data-testid="section-ads-intelligence"
+    >
+      <div className="border-b border-slate-700/80 px-4 py-4 sm:px-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border border-slate-600 bg-slate-800/80 text-lime-300">
+              <Activity className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-bold tracking-[-0.01em]" data-testid="text-ads-intelligence-title">Ads Intelligence</h2>
+                <span className="border border-slate-600 bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.13em] text-slate-300" data-testid="status-ads-platform-count">
+                  {platformsLoading ? "—" : `${platformCount} active ${platformCount === 1 ? "platform" : "platforms"}`}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">Connected paid acquisition, consolidated for this reporting period.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400" data-testid="status-ads-sync">
+            <Radio className="h-3 w-3 text-lime-300" aria-hidden="true" />
+            Live platform data
+            <ArrowUpRight className="ml-1 h-3 w-3 text-slate-500" aria-hidden="true" />
+          </div>
+        </div>
+      </div>
+
+      <div className="border-b border-slate-700/80 px-4 py-3 sm:px-5">
+        <div className="mb-2 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">Active platforms</div>
+        {platformsLoading ? (
+          <div className="space-y-2" data-testid="loading-ads-platforms">
+            <div className="h-9 animate-pulse bg-slate-800/80" />
+          </div>
+        ) : activePlatforms.length === 0 ? (
+          <div className="flex items-center gap-2 border border-dashed border-slate-700 px-3 py-2.5 text-[11px] text-slate-400" data-testid="empty-ads-platforms">
+            <span className="h-1.5 w-1.5 bg-slate-600" />
+            No connected platform metrics returned for this period.
+          </div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {activePlatforms.map((platform) => (
+              <div
+                key={platform.channel}
+                className="group flex min-w-0 items-center justify-between gap-3 border border-slate-700 bg-slate-900/55 px-3 py-2.5 transition-colors hover:border-slate-500 hover:bg-slate-800/65"
+                data-testid={`row-ads-platform-${platform.channel}`}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center border border-slate-600 bg-slate-800 text-[9px] font-black uppercase text-slate-200">
+                    {channelLabel(platform.channel).slice(0, 1)}
+                  </span>
+                  <span className="truncate text-xs font-semibold text-slate-200">{channelLabel(platform.channel)} Ads</span>
+                  <span className="border border-lime-300/30 bg-lime-300/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.1em] text-lime-300">Active</span>
+                </div>
+                <span className="shrink-0 text-[10px] tabular-nums text-slate-400">{formatCompact(platform.spend)} spend</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 divide-x divide-y divide-slate-700/80 sm:grid-cols-3 sm:divide-y-0">
+        {metrics.map((metric) => (
+          <div key={metric.id} className="min-h-[82px] px-4 py-3.5 transition-colors hover:bg-slate-800/35 sm:px-5" data-testid={`metric-ads-${metric.id}`}>
+            <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-500">{metric.label}</div>
+            {summaryLoading ? (
+              <div className="mt-3 h-5 w-20 animate-pulse bg-slate-800" data-testid={`loading-ads-${metric.id}`} />
+            ) : (
+              <div className="mt-2 text-base font-semibold tabular-nums text-slate-100">{metric.value}</div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-slate-700/80 px-4 py-4 sm:px-5" data-testid="section-ads-daily-trend">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">Daily trend</div>
+            <div className="mt-1 text-xs font-semibold text-slate-200">Spend versus revenue</div>
+          </div>
+          <div className="text-[10px] text-slate-500">14-day view · persisted ad metrics</div>
+        </div>
+        <div className="relative mt-3 h-28 overflow-hidden border border-slate-700/80 bg-slate-900/50" data-testid="chart-ads-daily-trend">
+          {trendLoading ? (
+            <div className="h-full animate-pulse bg-slate-800/60" data-testid="loading-ads-daily-trend" />
+          ) : hasTrendData ? (
+            <AdsTrendChart points={trend} formatCompact={formatCompact} />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="border border-slate-700 bg-[#111820] px-2.5 py-1 text-[10px] text-slate-500" data-testid="empty-ads-daily-trend">No daily trend data available</span>
+            </div>
+          )}
+        </div>
+        <div className="mt-2 flex gap-4 text-[9px] text-slate-500">
+          <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 bg-lime-300/70" /> Revenue</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 bg-sky-300/70" /> Spend</span>
+        </div>
+      </div>
+    </section>
   );
 }
 
-function DarkMetric({ label, value, loading }: { label: string; value: string; loading: boolean }) {
+function AdsTrendChart({
+  points,
+  formatCompact,
+}: {
+  points: AdsTrendPoint[];
+  formatCompact: (value: number) => string;
+}) {
+  const chartPoints = points.slice(-14);
+  const maxValue = Math.max(...chartPoints.flatMap((point) => [point.spend, point.revenue]), 1);
+  const x = (index: number) => (chartPoints.length <= 1 ? 50 : (index / (chartPoints.length - 1)) * 100);
+  const y = (value: number) => 94 - (value / maxValue) * 78;
+  const spendPath = chartPoints.map((point, index) => `${x(index).toFixed(2)},${y(point.spend).toFixed(2)}`).join(" ");
+  const revenuePath = chartPoints.map((point, index) => `${x(index).toFixed(2)},${y(point.revenue).toFixed(2)}`).join(" ");
+  const revenueArea = `0,94 ${revenuePath} 100,94`;
+  const latest = chartPoints[chartPoints.length - 1];
+
   return (
-    <div className="min-h-[94px] px-4 py-4 sm:px-5">
-      <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</div>
-      {loading ? <div className="mt-3 h-6 w-16 animate-pulse bg-slate-800" /> : <div className="mt-2 text-lg font-semibold tabular-nums text-slate-100">{value}</div>}
+    <div className="relative h-full w-full" data-testid="plot-ads-daily-trend">
+      <div className="pointer-events-none absolute inset-0 opacity-60" style={{ backgroundImage: "linear-gradient(to bottom, transparent 24%, rgba(71,85,105,.25) 25%, transparent 26%, transparent 49%, rgba(71,85,105,.25) 50%, transparent 51%, transparent 74%, rgba(71,85,105,.25) 75%, transparent 76%)" }} />
+      <svg className="absolute inset-0 h-full w-full px-3 py-2" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Daily ad spend and attributed revenue trend">
+        <defs>
+          <linearGradient id="ads-revenue-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#bef264" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#bef264" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <polygon points={revenueArea} fill="url(#ads-revenue-fill)" />
+        <polyline points={spendPath} fill="none" stroke="#7dd3fc" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
+        <polyline points={revenuePath} fill="none" stroke="#bef264" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+      </svg>
+      <div className="absolute inset-x-3 bottom-1 flex justify-between text-[8px] tabular-nums text-slate-600">
+        <span>{chartPoints[0]?.date.slice(5) ?? "—"}</span>
+        <span data-testid="text-ads-trend-latest">{latest ? `Latest ${formatCompact(latest.revenue)} revenue` : "—"}</span>
+        <span>{latest?.date.slice(5) ?? "—"}</span>
+      </div>
     </div>
   );
 }
