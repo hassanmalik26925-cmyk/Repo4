@@ -5,7 +5,7 @@ import { Activity as ActivityIcon, Loader2, Sparkles, ArrowLeft, KeyRound, Mail,
 import { useLogin, useRegister, useForgotPassword, useResetPassword } from "@workspace/api-client-react";
 import { useAuth } from "../contexts/AuthContext";
 import { friendlyError } from "../lib/errors";
-import { useSignIn, useSignUp } from "@clerk/react";
+import { useSignIn, useSignUp } from "@clerk/react/legacy";
 
 type Mode = "login" | "register" | "forgot" | "reset";
 
@@ -61,17 +61,29 @@ export function LoginPage({ defaultMode = "login" }: { defaultMode?: Mode }) {
 
   async function startSocialSignIn(provider: "google" | "x") {
     setError(null);
+    if (!signIn || !signUp) {
+      setError("Authentication is still loading. Please try again.");
+      return;
+    }
     const basePath = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+    const callbackUrl = new URL(
+      `${basePath}/sign-in/sso-callback`,
+      window.location.origin,
+    ).toString();
+    const completeUrl = new URL(
+      `${basePath}/auth/complete`,
+      window.location.origin,
+    ).toString();
     const params = {
       strategy: `oauth_${provider}` as const,
-      redirectUrl: `${basePath}/auth/complete`,
-      redirectCallbackUrl: `${basePath}/sign-in/sso-callback`,
+      redirectUrl: callbackUrl,
+      redirectUrlComplete: completeUrl,
     };
     try {
       if (mode === "register") {
-        await signUp.sso(params);
+        await signUp.authenticateWithRedirect(params);
       } else {
-        await signIn.sso(params);
+        await signIn.authenticateWithRedirect(params);
       }
     } catch (err) {
       setError(friendlyError(err as Error));

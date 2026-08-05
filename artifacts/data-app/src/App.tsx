@@ -161,9 +161,6 @@ function AuthenticatedApp() {
 function UnauthenticatedApp() {
   return (
     <Switch>
-      <Route path="/sign-in/sso-callback">
-        <AuthenticateWithRedirectCallback />
-      </Route>
       <Route path="/sign-in/*?"><ClerkSignIn /></Route>
       <Route path="/sign-up/*?"><ClerkSignUp /></Route>
       <Route path="/auth/complete"><SocialAuthComplete /></Route>
@@ -218,6 +215,7 @@ function SocialAuthComplete() {
   const { setSession } = useAuth();
   const started = useRef(false);
   const [, setLocation] = useLocation();
+  const [exchangeError, setExchangeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!clerkAuth.isLoaded || !clerkAuth.isSignedIn || started.current) return;
@@ -240,7 +238,7 @@ function SocialAuthComplete() {
       })
       .catch(() => {
         started.current = false;
-        setLocation("/login");
+        setExchangeError("We could not finish signing you in. Please try again.");
       });
   }, [clerkAuth.isLoaded, clerkAuth.isSignedIn, setLocation, setSession]);
 
@@ -248,8 +246,21 @@ function SocialAuthComplete() {
     return <Redirect to="/login" />;
   }
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-      <Loader2 className="h-7 w-7 animate-spin text-primary" />
+    <div className="flex min-h-screen items-center justify-center bg-background px-6 text-center text-muted-foreground">
+      {exchangeError ? (
+        <div className="max-w-sm">
+          <p className="text-sm font-semibold text-foreground">{exchangeError}</p>
+          <button
+            type="button"
+            onClick={() => setLocation("/login")}
+            className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
+          >
+            Return to login
+          </button>
+        </div>
+      ) : (
+        <Loader2 className="h-7 w-7 animate-spin text-primary" />
+      )}
     </div>
   );
 }

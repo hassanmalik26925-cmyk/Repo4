@@ -7,4 +7,4 @@ CommercePulse should expose Google and X through the managed Clerk OAuth flow. F
 
 **Why:** The managed Clerk setup supports Google and X, while Facebook appears as a separate connector requiring setup rather than as an available Clerk login provider.
 
-**How to apply:** When adding social authentication, use provider-specific Clerk redirects for Google/X and keep unsupported providers visibly unavailable until their provider configuration and callback flow are complete.
+**How to apply:** When adding social authentication, use provider-specific Clerk redirects for Google/X, use the installed legacy Clerk redirect hook with `redirectUrl` plus `redirectUrlComplete`, and keep unsupported providers visibly unavailable until their provider configuration and callback flow are complete.
