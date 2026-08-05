@@ -429,6 +429,51 @@ export const ListCustomersResponseItem = zod.object({
 });
 export const ListCustomersResponse = zod.array(ListCustomersResponseItem);
 
+export const GetCustomerDetailParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetCustomerDetailResponse = zod.object({
+  customer: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    email: zod.string(),
+    phone: zod.string().nullish(),
+    platform: zod.string(),
+    totalSpent: zod.number(),
+    ordersCount: zod.number(),
+    createdAt: zod.coerce.date(),
+  }),
+  summary: zod.object({
+    loyaltyTier: zod.string(),
+    loyaltyScore: zod.number(),
+    averageOrderValue: zod.number(),
+    repeatPurchaseRate: zod.number(),
+    lastOrderAt: zod.coerce.date().nullable(),
+    daysSinceLastOrder: zod.number().nullable(),
+  }),
+  orders: zod.array(
+    zod.object({
+      id: zod.string(),
+      orderNumber: zod.string(),
+      platform: zod.string(),
+      status: zod.string(),
+      totalAmount: zod.number(),
+      profit: zod.number(),
+      orderedAt: zod.coerce.date(),
+      itemCount: zod.number(),
+      productSummary: zod.string(),
+    }),
+  ),
+  topProducts: zod.array(
+    zod.object({
+      name: zod.string(),
+      units: zod.number(),
+      revenue: zod.number(),
+    }),
+  ),
+});
+
 export const getMarketingSummaryQueryRangeDefault = `30d`;
 
 export const GetMarketingSummaryQueryParams = zod.object({

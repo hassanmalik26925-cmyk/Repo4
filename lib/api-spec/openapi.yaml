@@ -515,6 +515,31 @@ paths:
                 items:
                   $ref: "#/components/schemas/Customer"
 
+  /customers/{id}:
+    get:
+      operationId: getCustomerDetail
+      tags: [customers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Customer detail and order history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerDetail"
+        "404":
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /marketing/summary:
     get:
       operationId: getMarketingSummary
@@ -1353,6 +1378,69 @@ components:
         email: { type: string }
         totalSpent: { type: number }
         ordersCount: { type: integer }
+
+    CustomerDetail:
+      type: object
+      required: [customer, summary, orders, topProducts]
+      properties:
+        customer:
+          $ref: "#/components/schemas/CustomerProfile"
+        summary:
+          $ref: "#/components/schemas/CustomerLoyaltySummary"
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerOrderHistory"
+        topProducts:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerTopProduct"
+
+    CustomerProfile:
+      type: object
+      required: [id, name, email, platform, totalSpent, ordersCount, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: ["string", "null"] }
+        platform: { type: string }
+        totalSpent: { type: number }
+        ordersCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    CustomerLoyaltySummary:
+      type: object
+      required: [loyaltyTier, loyaltyScore, averageOrderValue, repeatPurchaseRate, lastOrderAt, daysSinceLastOrder]
+      properties:
+        loyaltyTier: { type: string }
+        loyaltyScore: { type: integer }
+        averageOrderValue: { type: number }
+        repeatPurchaseRate: { type: number }
+        lastOrderAt: { type: ["string", "null"], format: date-time }
+        daysSinceLastOrder: { type: ["integer", "null"] }
+
+    CustomerOrderHistory:
+      type: object
+      required: [id, orderNumber, platform, status, totalAmount, profit, orderedAt, itemCount, productSummary]
+      properties:
+        id: { type: string }
+        orderNumber: { type: string }
+        platform: { type: string }
+        status: { type: string }
+        totalAmount: { type: number }
+        profit: { type: number }
+        orderedAt: { type: string, format: date-time }
+        itemCount: { type: integer }
+        productSummary: { type: string }
+
+    CustomerTopProduct:
+      type: object
+      required: [name, units, revenue]
+      properties:
+        name: { type: string }
+        units: { type: integer }
+        revenue: { type: number }
 
     MarketingSummary:
       type: object

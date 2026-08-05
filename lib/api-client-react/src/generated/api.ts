@@ -29,6 +29,7 @@ import type {
   CreateProductBody,
   CreateShippingRateBody,
   Customer,
+  CustomerDetail,
   DashboardOverview,
   ErrorResponse,
   ExchangeRates,
@@ -2038,6 +2039,86 @@ export function useListCustomers<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListCustomersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetCustomerDetailUrl = (id: string) => {
+  return `/api/customers/${id}`;
+};
+
+export const getCustomerDetail = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CustomerDetail> => {
+  return customFetch<CustomerDetail>(getGetCustomerDetailUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCustomerDetailQueryKey = (id: string) => {
+  return [`/api/customers/${id}`] as const;
+};
+
+export const getGetCustomerDetailQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCustomerDetail>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCustomerDetail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCustomerDetailQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCustomerDetail>>
+  > = ({ signal }) => getCustomerDetail(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCustomerDetail>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCustomerDetailQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCustomerDetail>>
+>;
+export type GetCustomerDetailQueryError = ErrorType<ErrorResponse>;
+
+export function useGetCustomerDetail<
+  TData = Awaited<ReturnType<typeof getCustomerDetail>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCustomerDetail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCustomerDetailQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

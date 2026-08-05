@@ -1175,6 +1175,17 @@ ${
 }
 
 function MeasurementSourcesGuide() {
+  const [ga4Id, setGa4Id] = useState(() => localStorage.getItem("pulse.measurement.ga4") ?? "");
+  const [pixelId, setPixelId] = useState(() => localStorage.getItem("pulse.measurement.pixel") ?? "");
+  const [saved, setSaved] = useState<string | null>(null);
+
+  function saveMeasurement(kind: "ga4" | "pixel") {
+    const value = kind === "ga4" ? ga4Id.trim() : pixelId.trim();
+    localStorage.setItem(`pulse.measurement.${kind}`, value);
+    setSaved(kind);
+    window.setTimeout(() => setSaved(null), 2200);
+  }
+
   return (
     <div className="mb-3 rounded-2xl border border-sky-200 bg-sky-50/70 p-4 dark:border-sky-900 dark:bg-sky-950/20">
       <div className="flex items-start gap-3">
@@ -1211,24 +1222,30 @@ function MeasurementSourcesGuide() {
       <p className="mt-3 text-[11px] font-medium text-sky-900/70 dark:text-sky-100/70">
         Recommended setup: connect your store API first, add GA4 for site behavior, and use pixels alongside your ad platforms for browser conversions.
       </p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900 dark:bg-amber-950/20">
-          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-          <div>
-            <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300">GA4 reporting import: not connected</div>
-            <p className="mt-0.5 text-[10px] leading-relaxed text-amber-900/70 dark:text-amber-100/70">
-              GA4 OAuth/property selection is not enabled in this version. Traffic reports stay empty unless CommercePulse has received real first-party events.
-            </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-sky-200/80 bg-white/70 p-3 dark:border-sky-800 dark:bg-sky-950/30">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-[11px] font-bold"><BarChart3 className="h-3.5 w-3.5 text-sky-500" /> GA4 setup</div>
+            <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${ga4Id ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-700"}`}>{ga4Id ? "ID saved" : "Not configured"}</span>
           </div>
+          <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">Enter the web stream Measurement ID, usually formatted like G-XXXXXXXXXX.</p>
+          <div className="mt-2 flex gap-2">
+            <input value={ga4Id} onChange={(event) => setGa4Id(event.target.value)} placeholder="G-XXXXXXXXXX" aria-label="GA4 Measurement ID" className="min-w-0 flex-1 rounded-lg border border-[hsl(var(--card-border))] bg-background px-2.5 py-2 text-xs font-mono" />
+            <button type="button" onClick={() => saveMeasurement("ga4")} className="rounded-lg bg-sky-500 px-2.5 py-2 text-[10px] font-bold text-white hover:bg-sky-600">{saved === "ga4" ? "Saved" : "Save"}</button>
+          </div>
+          <div className="mt-2 flex items-start gap-1.5 text-[10px] text-amber-800/75 dark:text-amber-200/75"><AlertCircle className="mt-0.5 h-3 w-3 shrink-0" /> Saved for setup reference; GA4 OAuth/property import is not connected yet.</div>
         </div>
-        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900 dark:bg-amber-950/20">
-          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-          <div>
-            <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300">Storefront pixel: not installed</div>
-            <p className="mt-0.5 text-[10px] leading-relaxed text-amber-900/70 dark:text-amber-100/70">
-              A public storefront event endpoint and installation snippet are not enabled yet, so CommercePulse does not invent pixel sessions or conversions.
-            </p>
+        <div className="rounded-xl border border-violet-200/80 bg-white/70 p-3 dark:border-violet-800 dark:bg-violet-950/30">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-[11px] font-bold"><MousePointerClick className="h-3.5 w-3.5 text-violet-500" /> Pixel setup</div>
+            <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${pixelId ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-700"}`}>{pixelId ? "ID saved" : "Not configured"}</span>
           </div>
+          <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">Enter the browser pixel ID you want to use for storefront conversion tracking.</p>
+          <div className="mt-2 flex gap-2">
+            <input value={pixelId} onChange={(event) => setPixelId(event.target.value)} placeholder="Pixel ID" aria-label="Storefront pixel ID" className="min-w-0 flex-1 rounded-lg border border-[hsl(var(--card-border))] bg-background px-2.5 py-2 text-xs font-mono" />
+            <button type="button" onClick={() => saveMeasurement("pixel")} className="rounded-lg bg-violet-500 px-2.5 py-2 text-[10px] font-bold text-white hover:bg-violet-600">{saved === "pixel" ? "Saved" : "Save"}</button>
+          </div>
+          <div className="mt-2 flex items-start gap-1.5 text-[10px] text-amber-800/75 dark:text-amber-200/75"><AlertCircle className="mt-0.5 h-3 w-3 shrink-0" /> Saved for setup reference; public pixel ingestion and installation are not connected yet.</div>
         </div>
       </div>
     </div>

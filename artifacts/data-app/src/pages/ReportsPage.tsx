@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
+  Award,
   BarChart3,
   ChevronDown,
   ChevronRight,
@@ -9,13 +10,18 @@ import {
   Download,
   ExternalLink,
   Gauge,
+  Heart,
   Layers3,
+  Mail,
   Megaphone,
   Package,
   RefreshCw,
   ShoppingCart,
   Store,
   Target,
+  Clock3,
+  Phone,
+  X,
   Users,
   WalletCards,
   WifiOff,
@@ -27,6 +33,7 @@ import {
   useGetMarketingSummary,
   useGetRevenueByPlatform,
   useGetRevenueTrend,
+  useGetCustomerDetail,
   useListCampaigns,
   useListCustomers,
   useListOrders,
@@ -38,7 +45,7 @@ import { AnimatedCard, AnimatedList, AnimatedListItem, AnimatedPage } from "../c
 import { Card, EmptyState, Skeleton, StatCard, C, ChartTooltip } from "../components/UIPrimitives";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { RANGE_LABELS, useDateRange } from "../contexts/DateRangeContext";
-import { formatDateShort, formatDateTime, formatDelta, formatNumber } from "../lib/format";
+import { formatDateShort, formatDateTime, formatDelta, formatNumber, formatRelative } from "../lib/format";
 import {
   Area,
   AreaChart,
@@ -188,6 +195,83 @@ function TrafficEmpty({ title = "Traffic source needed" }: { title?: string }) {
   );
 }
 
+function LoyaltyBadge({ tier }: { tier: string }) {
+  const config: Record<string, { bg: string; text: string }> = {
+    VIP: { bg: "bg-violet-500/10", text: "text-violet-600 dark:text-violet-300" },
+    Loyal: { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-300" },
+    Returning: { bg: "bg-sky-500/10", text: "text-sky-600 dark:text-sky-300" },
+    New: { bg: "bg-muted", text: "text-muted-foreground" },
+  };
+  const style = config[tier] ?? config.New;
+  return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold ${style.bg} ${style.text}`}><Award className="h-3 w-3" /> {tier}</span>;
+}
+
+function CustomerDetailPanel({
+  customerId,
+  onClose,
+  fmt,
+}: {
+  customerId: string;
+  onClose: () => void;
+  fmt: (value: number) => string;
+}) {
+  const detail = useGetCustomerDetail(customerId, {
+    query: {
+      queryKey: ["reports", "customer-detail", customerId],
+      enabled: Boolean(customerId),
+    },
+  });
+  const profile = detail.data?.customer;
+  const loyalty = detail.data?.summary;
+  const detailData = detail.data;
+  return (
+    <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/40 p-4 dark:border-violet-900 dark:bg-violet-950/20" data-testid="customer-detail-panel">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-sm font-bold text-white">
+            {profile?.name?.slice(0, 1).toUpperCase() ?? <Users className="h-4 w-4" />}
+          </div>
+          <div className="min-w-0">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-500">Customer detail</div>
+            <h3 className="mt-0.5 truncate text-lg font-bold">{profile?.name ?? "Loading customer…"}</h3>
+            {profile && <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground"><span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" /> {profile.email}</span>{profile.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {profile.phone}</span>}<span className="capitalize">{profile.platform}</span></div>}
+          </div>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Close customer detail" className="rounded-lg p-1.5 text-muted-foreground hover-elevate"><X className="h-4 w-4" /></button>
+      </div>
+      {detail.isLoading ? (
+        <div className="mt-4 grid gap-2 sm:grid-cols-4"><Skeleton className="h-20 rounded-xl" /><Skeleton className="h-20 rounded-xl" /><Skeleton className="h-20 rounded-xl" /><Skeleton className="h-20 rounded-xl" /></div>
+      ) : detail.isError ? (
+        <DataNotice error text="Customer detail could not be loaded. Try selecting the customer again." />
+      ) : profile && loyalty && detailData ? (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="rounded-xl border border-violet-200/80 bg-background/70 p-3 dark:border-violet-800"><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Loyalty</div><div className="mt-1"><LoyaltyBadge tier={loyalty.loyaltyTier} /></div></div>
+            <div className="rounded-xl border border-violet-200/80 bg-background/70 p-3 dark:border-violet-800"><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Score</div><div className="mt-1 text-lg font-bold">{loyalty.loyaltyScore}<span className="text-xs text-muted-foreground">/100</span></div></div>
+            <div className="rounded-xl border border-violet-200/80 bg-background/70 p-3 dark:border-violet-800"><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg order</div><div className="mt-1 text-lg font-bold">{fmt(loyalty.averageOrderValue)}</div></div>
+            <div className="rounded-xl border border-violet-200/80 bg-background/70 p-3 dark:border-violet-800"><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Repeat rate</div><div className="mt-1 text-lg font-bold">{loyalty.repeatPurchaseRate.toFixed(0)}%</div></div>
+            <div className="rounded-xl border border-violet-200/80 bg-background/70 p-3 dark:border-violet-800"><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Last order</div><div className="mt-1 text-xs font-bold">{loyalty.lastOrderAt ? formatRelative(loyalty.lastOrderAt) : "No order"}</div></div>
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
+            <div className="rounded-xl border border-violet-200/80 bg-background/70 p-3 dark:border-violet-800">
+              <div className="flex items-center gap-2 text-xs font-bold"><Heart className="h-3.5 w-3.5 text-rose-500" /> Loyalty readout</div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                {loyalty.loyaltyTier === "VIP" ? "High-value customer. Consider early access, concierge support, or a referral ask." : loyalty.loyaltyTier === "Loyal" || loyalty.loyaltyTier === "Returning" ? "This customer has established repeat behavior. A replenishment reminder or loyalty reward may increase frequency." : "New customer with limited order history. Focus on a strong second-purchase experience."}
+              </p>
+              <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground"><Clock3 className="h-3.5 w-3.5" /> {loyalty.daysSinceLastOrder === null ? "No order history yet" : `${loyalty.daysSinceLastOrder} days since last order`}</div>
+              {detailData.topProducts.length > 0 && <div className="mt-4"><div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Favorite products</div><div className="mt-2 space-y-1.5">{detailData.topProducts.map((product) => <div key={product.name} className="flex items-center justify-between gap-2 text-xs"><span className="min-w-0 truncate">{product.name}</span><span className="shrink-0 font-semibold text-muted-foreground">{product.units} units</span></div>)}</div></div>}
+            </div>
+            <div className="rounded-xl border border-violet-200/80 bg-background/70 p-3 dark:border-violet-800">
+              <div className="flex items-center justify-between gap-2"><div className="text-xs font-bold">Order history</div><span className="text-[10px] text-muted-foreground">{detailData.orders.length} recorded orders</span></div>
+              {detailData.orders.length ? <div className="mt-2 space-y-1.5">{detailData.orders.slice(0, 8).map((order) => <div key={order.id} className="grid grid-cols-[1.1fr_0.9fr_0.7fr] items-center gap-2 rounded-lg bg-muted/30 px-2.5 py-2 text-[11px]"><div className="min-w-0"><div className="font-semibold">{order.orderNumber}</div><div className="truncate text-[10px] text-muted-foreground">{formatDateTime(order.orderedAt)} · {order.productSummary || "Items not named"}</div></div><span className="capitalize text-muted-foreground">{order.status}</span><span className="text-right font-bold">{fmt(order.totalAmount)}</span></div>)}</div> : <div className="mt-3"><DataNotice text="No orders are linked to this customer yet." /></div>}
+            </div>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export function ReportsPage({
   hasConnected = true,
   onGoToSettings,
@@ -198,6 +282,7 @@ export function ReportsPage({
   const { format: fmt, formatCompact } = useCurrency();
   const [activeSection, setActiveSection] = useState<ReportSection>(initialSection);
   const [orderSort, setOrderSort] = useState<SortKey>("totalAmount");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveSection(initialSection);
@@ -304,6 +389,54 @@ export function ReportsPage({
   }
 
   const jumpTo = (section: ReportSection) => setActiveSection(section);
+  const customerListContent = customers.isLoading ? (
+    <div className="mt-4 space-y-2">
+      <Skeleton className="h-12 rounded-xl" />
+      <Skeleton className="h-12 rounded-xl" />
+    </div>
+  ) : customerRows.length ? (
+    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+      {customerRows
+        .slice()
+        .sort((a, b) => b.totalSpent - a.totalSpent)
+        .slice(0, 8)
+        .map((customer) => (
+          <button
+            type="button"
+            key={customer.id}
+            onClick={() => setSelectedCustomerId((current) => (current === customer.id ? null : customer.id))}
+            className={`flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-colors hover-elevate ${
+              selectedCustomerId === customer.id
+                ? "border-violet-400 bg-violet-500/10"
+                : "border-[hsl(var(--card-border))] bg-muted/20"
+            }`}
+            data-testid={`row-report-customer-${customer.id}`}
+          >
+            <div className="min-w-0">
+              <div className="truncate text-xs font-semibold">{customer.name}</div>
+              <div className="mt-0.5 truncate text-[10px] text-muted-foreground">{customer.email || "No email on record"}</div>
+              <div className="mt-1 text-[10px] text-violet-500">
+                {selectedCustomerId === customer.id ? "Hide insights" : "Open loyalty & history"}
+              </div>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="text-xs font-bold text-emerald-500">{fmt(customer.totalSpent)}</div>
+              <div className="text-[10px] text-muted-foreground">
+                {customer.ordersCount} {customer.ordersCount === 1 ? "order" : "orders"}
+              </div>
+            </div>
+          </button>
+        ))}
+    </div>
+  ) : (
+    <div className="mt-4">
+      <EmptyState
+        title="No customer records returned"
+        description="Retention and lifetime value will populate after the connected store shares customer records."
+        icon={<Users className="h-5 w-5" />}
+      />
+    </div>
+  );
 
   return (
     <AnimatedPage>
@@ -425,7 +558,8 @@ export function ReportsPage({
               <Card className="p-4">
                 <SectionHeading icon={<Users className="h-4 w-4" />} eyebrow="05 / Customers & retention" title="Value retained" detail="Segments derived only from imported customer totals and order counts." />
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><MetricReceipt label="Customers" value={formatNumber(customerRows.length)} note="Imported records" /><MetricReceipt label="Repeat share" value={customerRows.length ? `${repeatShare.toFixed(1)}%` : "—"} note={customerRows.length ? `${formatNumber(repeatCustomers.length)} repeat buyers` : "Requires customer records"} /><MetricReceipt label="Average LTV" value={customerRows.length ? fmt(averageLtv) : "—"} note="Average total spent" /><MetricReceipt label="One-time buyers" value={formatNumber(oneTimeCustomers.length)} note="Exactly one recorded order" /></div>
-                {customers.isLoading ? <div className="mt-4 space-y-2"><Skeleton className="h-12 rounded-xl" /><Skeleton className="h-12 rounded-xl" /></div> : customerRows.length ? <div className="mt-4 grid gap-2 sm:grid-cols-2">{customerRows.slice().sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 8).map((customer) => <div key={customer.id} className="flex items-center justify-between gap-3 rounded-xl border border-[hsl(var(--card-border))] bg-muted/20 px-3 py-2.5" data-testid={`row-report-customer-${customer.id}`}><div className="min-w-0"><div className="truncate text-xs font-semibold">{customer.name}</div><div className="mt-0.5 truncate text-[10px] text-muted-foreground">{customer.email || "No email on record"}</div></div><div className="shrink-0 text-right"><div className="text-xs font-bold text-emerald-500">{fmt(customer.totalSpent)}</div><div className="text-[10px] text-muted-foreground">{customer.ordersCount} {customer.ordersCount === 1 ? "order" : "orders"}</div></div></div>)}</div> : <div className="mt-4"><EmptyState title="No customer records returned" description="Retention and lifetime value will populate after the connected store shares customer records." icon={<Users className="h-5 w-5" />} /></div>}
+                 {customerListContent}
+                 {selectedCustomerId && <CustomerDetailPanel customerId={selectedCustomerId} onClose={() => setSelectedCustomerId(null)} fmt={fmt} />}
               </Card>
             </section>
             )}

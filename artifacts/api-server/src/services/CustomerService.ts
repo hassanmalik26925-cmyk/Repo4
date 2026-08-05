@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
-import { db, customersTable, ordersTable } from "@workspace/db";
+import { db, customersTable, ordersTable, orderItemsTable } from "@workspace/db";
 import type { DateWindow } from "../lib/dateRange";
 import { REVENUE_STATUSES } from "./RevenueService";
 
@@ -9,6 +9,39 @@ export interface CustomerRow {
   email: string;
   totalSpent: number;
   ordersCount: number;
+}
+
+export interface CustomerDetail {
+  customer: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    platform: string;
+    totalSpent: number;
+    ordersCount: number;
+    createdAt: string;
+  };
+  summary: {
+    loyaltyTier: string;
+    loyaltyScore: number;
+    averageOrderValue: number;
+    repeatPurchaseRate: number;
+    lastOrderAt: string | null;
+    daysSinceLastOrder: number | null;
+  };
+  orders: Array<{
+    id: string;
+    orderNumber: string;
+    platform: string;
+    status: string;
+    totalAmount: number;
+    profit: number;
+    orderedAt: string;
+    itemCount: number;
+    productSummary: string;
+  }>;
+  topProducts: Array<{ name: string; units: number; revenue: number }>;
 }
 
 export class CustomerService {
@@ -26,6 +59,113 @@ export class CustomerService {
       totalSpent: Number(c.totalSpent),
       ordersCount: c.ordersCount,
     }));
+  }
+
+  static async detail(userId: string, customerId: string): Promise<CustomerDetail | null> {
+    const [customer] = await db
+      .select()
+      .from(customersTable)
+      .where(and(eq(customersTable.userId, userId), eq(customersTable.id, customerId)));
+    if (!customer) return null;
+
+    const [orders, topProducts] = await Promise.all([
+      db
+        .select({
+          id: ordersTable.id,
+          orderNumber: ordersTable.orderNumber,
+          platform: ordersTable.platform,
+          status: ordersTable.status,
+          totalAmount: ordersTable.totalAmount,
+          orderedAt: ordersTable.orderedAt,
+          itemsCost: sql<string>`COALESCE(SUM(${orderItemsTable.unitCost} * ${orderItemsTable.quantity}), 0)`,
+          itemCount: sql<string>`COALESCE(SUM(${orderItemsTable.quantity}), 0)`,
+          productSummary: sql<string>`COALESCE(string_agg(${orderItemsTable.name}, ', ' ORDER BY ${orderItemsTable.name}), '')`,
+        })
+        .from(ordersTable)
+        .leftJoin(orderItemsTable, eq(orderItemsTable.orderId, ordersTable.id))
+        .where(and(eq(ordersTable.userId, userId), eq(ordersTable.customerId, customerId)))
+        .groupBy(
+          ordersTable.id,
+          ordersTable.orderNumber,
+          ordersTable.platform,
+          ordersTable.status,
+          ordersTable.totalAmount,
+          ordersTable.orderedAt,
+        )
+        .orderBy(desc(ordersTable.orderedAt))
+        .limit(200),
+      db
+        .select({
+          name: orderItemsTable.name,
+          units: sql<string>`COALESCE(SUM(${orderItemsTable.quantity}), 0)`,
+          revenue: sql<string>`COALESCE(SUM(${orderItemsTable.quantity} * ${orderItemsTable.unitPrice}), 0)`,
+        })
+        .from(orderItemsTable)
+        .innerJoin(ordersTable, eq(ordersTable.id, orderItemsTable.orderId))
+        .where(and(eq(ordersTable.userId, userId), eq(ordersTable.customerId, customerId)))
+        .groupBy(orderItemsTable.name)
+        .orderBy(desc(sql`SUM(${orderItemsTable.quantity})`))
+        .limit(5),
+    ]);
+
+    const lastOrder = orders[0]?.orderedAt ?? null;
+    const daysSinceLastOrder = lastOrder
+      ? Math.max(0, Math.floor((Date.now() - lastOrder.getTime()) / 86_400_000))
+      : null;
+    const averageOrderValue = customer.ordersCount > 0
+      ? Number(customer.totalSpent) / customer.ordersCount
+      : 0;
+    const repeatPurchaseRate = customer.ordersCount > 0
+      ? Math.min(100, Math.max(0, ((customer.ordersCount - 1) / customer.ordersCount) * 100))
+      : 0;
+    const loyaltyTier =
+      customer.ordersCount >= 5 || Number(customer.totalSpent) >= 1000
+        ? "VIP"
+        : customer.ordersCount >= 3 || Number(customer.totalSpent) >= 500
+          ? "Loyal"
+          : customer.ordersCount > 1
+            ? "Returning"
+            : "New";
+    const recencyScore = daysSinceLastOrder === null ? 0 : Math.max(0, 40 - Math.min(daysSinceLastOrder, 40));
+    const frequencyScore = Math.min(35, customer.ordersCount * 7);
+    const valueScore = Math.min(25, Math.round((Number(customer.totalSpent) / 1000) * 25));
+
+    return {
+      customer: {
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        platform: customer.platform,
+        totalSpent: Number(customer.totalSpent),
+        ordersCount: customer.ordersCount,
+        createdAt: customer.createdAt.toISOString(),
+      },
+      summary: {
+        loyaltyTier,
+        loyaltyScore: Math.min(100, recencyScore + frequencyScore + valueScore),
+        averageOrderValue,
+        repeatPurchaseRate,
+        lastOrderAt: lastOrder?.toISOString() ?? null,
+        daysSinceLastOrder,
+      },
+      orders: orders.map((order) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        platform: order.platform,
+        status: order.status,
+        totalAmount: Number(order.totalAmount),
+        profit: Number(order.totalAmount) - Number(order.itemsCost),
+        orderedAt: order.orderedAt.toISOString(),
+        itemCount: Number(order.itemCount),
+        productSummary: order.productSummary,
+      })),
+      topProducts: topProducts.map((product) => ({
+        name: product.name,
+        units: Number(product.units),
+        revenue: Number(product.revenue),
+      })),
+    };
   }
 
   static async newCustomersCount(

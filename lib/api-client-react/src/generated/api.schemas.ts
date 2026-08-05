@@ -274,6 +274,54 @@ export interface Customer {
   ordersCount: number;
 }
 
+export interface CustomerProfile {
+  id: string;
+  name: string;
+  email: string;
+  /** @nullable */
+  phone?: string | null;
+  platform: string;
+  totalSpent: number;
+  ordersCount: number;
+  createdAt: string;
+}
+
+export interface CustomerLoyaltySummary {
+  loyaltyTier: string;
+  loyaltyScore: number;
+  averageOrderValue: number;
+  repeatPurchaseRate: number;
+  /** @nullable */
+  lastOrderAt: string | null;
+  /** @nullable */
+  daysSinceLastOrder: number | null;
+}
+
+export interface CustomerOrderHistory {
+  id: string;
+  orderNumber: string;
+  platform: string;
+  status: string;
+  totalAmount: number;
+  profit: number;
+  orderedAt: string;
+  itemCount: number;
+  productSummary: string;
+}
+
+export interface CustomerTopProduct {
+  name: string;
+  units: number;
+  revenue: number;
+}
+
+export interface CustomerDetail {
+  customer: CustomerProfile;
+  summary: CustomerLoyaltySummary;
+  orders: CustomerOrderHistory[];
+  topProducts: CustomerTopProduct[];
+}
+
 export interface MarketingSummary {
   adSpend: number;
   adRevenue: number;
