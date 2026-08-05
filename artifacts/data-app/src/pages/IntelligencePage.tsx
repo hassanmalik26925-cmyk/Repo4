@@ -247,33 +247,210 @@ function AnalyticsSection({ overview, trend, summary, fmt, onNavigate }: { overv
   );
 }
 
-function CopilotSection({ overview, summary, insights, marketing, campaigns, fmt, rangeLabel, onNavigate }: { overview: any; summary: any; insights: any[]; marketing: any; campaigns: any[]; fmt: (value: number) => string; rangeLabel: string; onNavigate: (target: Target) => void }) {
+type CopilotQuestion = {
+  id: string;
+  label: string;
+};
+
+type CopilotAnswer = {
+  question: string;
+  answer: string;
+  evidence: string[];
+  target: Target;
+  available: boolean;
+};
+
+const copilotQuestions: CopilotQuestion[] = [
+  { id: "next-action", label: "What should I fix today?" },
+  { id: "revenue", label: "What is happening with revenue?" },
+  { id: "profit", label: "Why did profit change?" },
+  { id: "customers", label: "How healthy are my customers?" },
+  { id: "products", label: "Which products need action?" },
+  { id: "campaign", label: "Which campaign needs attention?" },
+  { id: "operations", label: "What is my biggest operational risk?" },
+  { id: "data-health", label: "Is my CommercePulse data ready?" },
+];
+
+function CopilotSection({
+  overview,
+  summary,
+  insights,
+  marketing,
+  campaigns,
+  products,
+  orders,
+  integrations,
+  fmt,
+  rangeLabel,
+  onNavigate,
+}: {
+  overview: any;
+  summary: any;
+  insights: any[];
+  marketing: any;
+  campaigns: any[];
+  products: any[];
+  orders: any[];
+  integrations: any[];
+  fmt: (value: number) => string;
+  rangeLabel: string;
+  onNavigate: (target: Target) => void;
+}) {
   const [prompt, setPrompt] = useState("");
-  const [answer, setAnswer] = useState<{ title: string; body: string; evidence: string[]; target: Target } | null>(null);
-  const suggestions = ["Why did profit change?", "What should I fix today?", "Which campaign needs attention?"];
+  const [selectedQuestion, setSelectedQuestion] = useState(copilotQuestions[0].id);
+  const [answer, setAnswer] = useState<CopilotAnswer | null>(null);
+
+  function answerQuestion(questionId: string) {
+    const question = copilotQuestions.find((item) => item.id === questionId) ?? copilotQuestions[0];
+    const lowStock = products
+      .filter((product) => product.stock <= 0 || product.lowStock)
+      .sort((a, b) => a.stock - b.stock)
+      .slice(0, 4);
+    const openOrders = orders.filter((order) => ["pending", "unfulfilled", "processing"].includes(String(order.status).toLowerCase()));
+    const syncIssues = integrations.filter((integration) => integration.status === "error");
+    let nextAnswer: CopilotAnswer;
+
+    if (question.id === "next-action") {
+      const top = insights[0];
+      nextAnswer = {
+        question: question.label,
+        answer: top
+          ? `${top.title}. ${top.description}`
+          : lowStock.length
+            ? `${lowStock[0].name} is the most urgent catalog issue with ${lowStock[0].stock <= 0 ? "no stock available" : `${lowStock[0].stock} units remaining`}.`
+            : openOrders.length
+              ? `${openOrders.length} order${openOrders.length === 1 ? "" : "s"} still need fulfillment review.`
+              : "No prioritized action is available for the selected range. CommercePulse needs more synced records to recommend one.",
+        evidence: top?.metric ? [top.metric, rangeLabel] : lowStock.length ? [`${lowStock.length} low-stock products`, rangeLabel] : [`${openOrders.length} open orders`, rangeLabel],
+        target: (top?.actionTarget ?? (lowStock.length ? { screen: "products", focus: "stock" } : { screen: "orders" })) as Target,
+        available: Boolean(top || lowStock.length || openOrders.length),
+      };
+    } else if (question.id === "revenue") {
+      const hasOrders = orders.length > 0;
+      const revenue = overview?.revenue?.value;
+      const direction = overview?.revenue?.deltaPct ?? 0;
+      nextAnswer = {
+        question: question.label,
+        answer: hasOrders
+          ? `Revenue is ${direction >= 0 ? "up" : "down"} ${Math.abs(direction).toFixed(1)}% versus the previous period, with ${fmt(revenue ?? 0)} recorded in this range.`
+          : "Revenue is not available for this range because no order records were returned.",
+        evidence: hasOrders ? [`Revenue: ${fmt(revenue ?? 0)}`, `${orders.length} order records`, `AOV: ${fmt(overview?.avgOrderValue?.value ?? 0)}`] : ["No order records returned", rangeLabel],
+        target: { screen: "reports", section: "overview" },
+        available: hasOrders,
+      };
+    } else if (question.id === "profit") {
+      const hasOrders = orders.length > 0;
+      const direction = overview?.profit?.deltaPct ?? 0;
+      nextAnswer = {
+        question: question.label,
+        answer: hasOrders
+          ? `Profit is ${direction >= 0 ? "up" : "down"} ${Math.abs(direction).toFixed(1)}% versus the previous period. Review ad spend, CPA, and low-margin products before changing prices.`
+          : "Profit is not available for this range because no order records were returned.",
+        evidence: hasOrders ? [`Profit: ${fmt(overview?.profit?.value ?? 0)}`, `Margin: ${(overview?.margin ?? 0).toFixed(1)}%`, `Ad spend: ${fmt(overview?.adSpend?.value ?? 0)}`] : ["No order records returned", rangeLabel],
+        target: { screen: "reports", section: "profitability" },
+        available: hasOrders,
+      };
+    } else if (question.id === "customers") {
+      const customer = summary?.customer;
+      const customerAvailable = Boolean(customer && (customer.totalCustomers?.value > 0 || customer.newCustomers?.value > 0 || customer.repeatRate));
+      nextAnswer = {
+        question: question.label,
+        answer: customerAvailable
+          ? `${customer.totalCustomers?.value ?? customer.newCustomers?.value ?? 0} customer records are represented in the selected range. Repeat purchase rate is ${customer.repeatRate?.value?.toFixed(1) ?? "0.0"}%, with average lifetime value of ${fmt(customer.averageLifetimeValue?.value ?? 0)}.`
+          : "Customer answers are not available for this range because no customer records were returned.",
+        evidence: customerAvailable ? [`Repeat rate: ${customer.repeatRate?.value?.toFixed(1) ?? "0.0"}%`, `Average LTV: ${fmt(customer.averageLifetimeValue?.value ?? 0)}`, rangeLabel] : ["No customer records returned", rangeLabel],
+        target: { screen: "reports", section: "customers" },
+        available: customerAvailable,
+      };
+    } else if (question.id === "products") {
+      nextAnswer = {
+        question: question.label,
+        answer: products.length
+          ? lowStock.length
+            ? `${lowStock.map((product) => product.name).join(", ")} ${lowStock.length === 1 ? "needs" : "need"} inventory attention.`
+            : "No low-stock or out-of-stock products were returned from the current catalog."
+          : "Product answers are not available because no catalog records were returned.",
+        evidence: products.length ? [`${products.length} catalog products`, lowStock.length ? `${lowStock.length} low-stock products` : "No stock warnings"] : ["No product records returned", rangeLabel],
+        target: { screen: "products", focus: lowStock.length ? "stock" : "catalog" },
+        available: products.length > 0,
+      };
+    } else if (question.id === "campaign") {
+      const weak = [...campaigns].sort((a, b) => a.roas - b.roas)[0];
+      nextAnswer = {
+        question: question.label,
+        answer: weak
+          ? `${weak.name} is the first campaign to review at ${weak.roas.toFixed(2)}x ROAS and ${fmt(weak.spend)} spend. Compare its creative, audience, and landing-page performance before adding budget.`
+          : "Campaign answers are not available because no campaign rows were returned from an ad platform sync.",
+        evidence: weak ? [`${weak.channel} · ${weak.roas.toFixed(2)}x ROAS`, `Spend: ${fmt(weak.spend)}`, rangeLabel] : ["No campaign rows returned", "No ad attribution available"],
+        target: { screen: "marketing", focus: weak?.id ?? "campaigns" },
+        available: Boolean(weak),
+      };
+    } else if (question.id === "operations") {
+      const hasOperationalData = products.length > 0 || orders.length > 0 || integrations.length > 0;
+      nextAnswer = {
+        question: question.label,
+        answer: hasOperationalData
+          ? syncIssues.length
+            ? `${syncIssues.length} integration${syncIssues.length === 1 ? "" : "s"} report an error and should be checked first.`
+            : lowStock.length
+              ? `${lowStock.length} product${lowStock.length === 1 ? "" : "s"} need inventory attention.`
+              : openOrders.length
+                ? `${openOrders.length} open order${openOrders.length === 1 ? "" : "s"} need fulfillment review.`
+                : "No operational risk was found in the currently available records."
+          : "Operational answers are not available because no product, order, or integration records were returned.",
+        evidence: hasOperationalData ? [`${openOrders.length} open orders`, `${lowStock.length} low-stock products`, `${syncIssues.length} sync issues`] : ["No operational records returned", rangeLabel],
+        target: syncIssues.length ? { screen: "settings" } : lowStock.length ? { screen: "products", focus: "stock" } : { screen: "orders" },
+        available: hasOperationalData,
+      };
+    } else {
+      nextAnswer = {
+        question: question.label,
+        answer: integrations.length
+          ? `${integrations.filter((integration) => integration.status === "connected").length} source${integrations.filter((integration) => integration.status === "connected").length === 1 ? " is" : "s are"} connected. ${syncIssues.length ? `${syncIssues.length} source${syncIssues.length === 1 ? "" : "s"} need attention.` : "No integration errors are currently reported."}`
+          : "Data health is not available because CommercePulse has no integration records for this workspace.",
+        evidence: integrations.length ? [`${integrations.length} integration records`, `${syncIssues.length} sync issues`, "Connection status from Settings"] : ["No integration records returned", rangeLabel],
+        target: { screen: "settings" },
+        available: integrations.length > 0,
+      };
+    }
+
+    setSelectedQuestion(question.id);
+    setPrompt(question.label);
+    setAnswer(nextAnswer);
+  }
+
   function ask(value = prompt) {
     const normalized = value.toLowerCase();
-    if (normalized.includes("campaign") || normalized.includes("marketing") || normalized.includes("roas")) {
-      const weak = [...campaigns].sort((a, b) => a.roas - b.roas)[0];
-      setAnswer({ title: "Your biggest marketing opportunity", body: weak ? `${weak.name} is the first campaign to review. It is running at ${weak.roas.toFixed(2)}x ROAS with ${fmt(weak.spend)} spend. Compare its creative, audience, and landing-page performance before adding budget.` : "There is not enough campaign data to rank opportunities yet. Connect an ad account and sync it first.", evidence: [weak ? `${weak.channel} · ${weak.roas.toFixed(2)}x ROAS` : "No campaign rows returned", `${fmt(marketing?.adSpend ?? 0)} total spend in this range`], target: { screen: "marketing", focus: weak?.id ?? "campaigns" } });
-    } else if (normalized.includes("profit") || normalized.includes("margin")) {
-      const direction = overview?.profit?.deltaPct ?? 0;
-      setAnswer({ title: direction >= 0 ? "Profit is moving in the right direction" : "Profit needs attention", body: `Profit is ${direction >= 0 ? "up" : "down"} ${Math.abs(direction).toFixed(1)}% versus the previous period. The fastest review path is to compare ad spend, CPA, and low-margin products before changing prices.`, evidence: [`Profit: ${fmt(overview?.profit?.value ?? 0)}`, `Margin: ${(overview?.margin ?? 0).toFixed(1)}%`, `Ad spend: ${fmt(overview?.adSpend?.value ?? 0)}`], target: { screen: "reports", section: "profitability" } });
-    } else {
-      const top = insights[0];
-      setAnswer({ title: "Your next best action", body: top ? `${top.title}. ${top.description}` : "Your account is stable for the selected range. Connect more sources or widen the range to surface more opportunities.", evidence: top?.metric ? [top.metric, rangeLabel] : ["Live dashboard data", rangeLabel], target: (top?.actionTarget ?? { screen: "reports", section: "overview" }) as Target });
-    }
-    setPrompt(value);
+    const matched = normalized.includes("campaign") || normalized.includes("marketing") || normalized.includes("roas")
+      ? "campaign"
+      : normalized.includes("profit") || normalized.includes("margin")
+        ? "profit"
+        : normalized.includes("revenue") || normalized.includes("sales")
+          ? "revenue"
+          : normalized.includes("customer") || normalized.includes("loyalty") || normalized.includes("ltv")
+            ? "customers"
+            : normalized.includes("product") || normalized.includes("stock") || normalized.includes("inventory")
+              ? "products"
+              : normalized.includes("operation") || normalized.includes("order") || normalized.includes("fulfillment")
+                ? "operations"
+                : normalized.includes("data") || normalized.includes("source") || normalized.includes("integration")
+                  ? "data-health"
+                  : "next-action";
+    answerQuestion(matched);
   }
   return (
     <div className="space-y-4">
       <SectionHeader icon={<Brain className="h-4 w-4" />} eyebrow="Business copilot" title="Ask the operator's question" detail="Answers are grounded in your current CommercePulse data and always include the evidence behind the recommendation." />
       <Card className="border-violet-200 bg-violet-50/50 p-4 dark:border-violet-900 dark:bg-violet-950/20">
-        <div className="flex items-start gap-3"><div className="rounded-xl bg-violet-500 p-2 text-white"><Sparkles className="h-4 w-4" /></div><div><div className="text-sm font-bold">Decision copilot</div><p className="mt-1 text-xs text-muted-foreground">Ask about profit, growth, campaigns, customers, or what deserves attention today.</p></div></div>
-        <div className="mt-4 flex flex-wrap gap-2">{suggestions.map((item) => <button key={item} type="button" onClick={() => ask(item)} className="rounded-full border border-violet-200 bg-white/70 px-3 py-1.5 text-[11px] font-semibold text-violet-700 hover-elevate dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-300">{item}</button>)}</div>
-        <div className="mt-3 flex gap-2"><input value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && prompt.trim()) ask(); }} placeholder="Ask a business question…" className="min-w-0 flex-1 rounded-xl border border-violet-200 bg-background px-3 py-2.5 text-sm outline-none focus:border-violet-500 dark:border-violet-800" /><button type="button" disabled={!prompt.trim()} onClick={() => ask()} className="inline-flex items-center gap-1 rounded-xl bg-violet-500 px-3 py-2.5 text-xs font-bold text-white disabled:opacity-50"><Send className="h-3.5 w-3.5" /> Ask</button></div>
+        <div className="flex items-start gap-3"><div className="rounded-xl bg-violet-500 p-2 text-white"><Sparkles className="h-4 w-4" /></div><div><div className="text-sm font-bold">Decision copilot</div><p className="mt-1 text-xs text-muted-foreground">Choose a ready-made question. CommercePulse checks every available data source and answers immediately without follow-up questions.</p></div></div>
+        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+          <label className="min-w-0"><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">Select a question</span><select value={selectedQuestion} onChange={(event) => answerQuestion(event.target.value)} className="w-full rounded-xl border border-violet-200 bg-background px-3 py-2.5 text-sm font-semibold outline-none focus:border-violet-500 dark:border-violet-800">{copilotQuestions.map((question) => <option key={question.id} value={question.id}>{question.label}</option>)}</select></label>
+          <div className="flex items-end"><button type="button" onClick={() => answerQuestion(selectedQuestion)} className="inline-flex w-full items-center justify-center gap-1 rounded-xl bg-violet-500 px-3 py-2.5 text-xs font-bold text-white md:w-auto"><Sparkles className="h-3.5 w-3.5" /> Answer now</button></div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">{copilotQuestions.map((question) => <button key={question.id} type="button" onClick={() => answerQuestion(question.id)} className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${selectedQuestion === question.id ? "border-violet-500 bg-violet-500 text-white" : "border-violet-200 bg-white/70 text-violet-700 hover-elevate dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-300"}`}>{question.label}</button>)}</div>
+        <div className="mt-4 border-t border-violet-200/70 pt-3 dark:border-violet-800/70"><div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Or map a question to live data</div><div className="flex gap-2"><input value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && prompt.trim()) ask(); }} placeholder="e.g. What is happening with sales?" className="min-w-0 flex-1 rounded-xl border border-violet-200 bg-background px-3 py-2.5 text-sm outline-none focus:border-violet-500 dark:border-violet-800" /><button type="button" disabled={!prompt.trim()} onClick={() => ask()} className="inline-flex items-center gap-1 rounded-xl bg-violet-500 px-3 py-2.5 text-xs font-bold text-white disabled:opacity-50"><Send className="h-3.5 w-3.5" /> Answer</button></div></div>
       </Card>
-      {answer && <Card className="p-4"><div className="flex items-start justify-between gap-3"><div><div className="text-[10px] font-bold uppercase tracking-[0.15em] text-violet-500">Copilot readout</div><h3 className="mt-1 text-lg font-bold">{answer.title}</h3></div><button type="button" onClick={() => setAnswer(null)} className="rounded-lg p-1 text-muted-foreground hover-elevate"><X className="h-4 w-4" /></button></div><p className="mt-3 text-sm leading-relaxed text-foreground/80">{answer.body}</p><div className="mt-4 rounded-xl bg-muted/40 p-3"><div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Based on</div><div className="mt-2 flex flex-wrap gap-2">{answer.evidence.map((item) => <span key={item} className="rounded-full bg-card px-2.5 py-1 text-[11px] font-semibold">{item}</span>)}</div></div><button type="button" onClick={() => onNavigate(answer.target)} className="mt-4 inline-flex items-center gap-1 rounded-full bg-sky-500 px-3 py-1.5 text-xs font-bold text-white">Review in CommercePulse <ChevronRight className="h-3.5 w-3.5" /></button></Card>}
+      {answer && <Card className="p-4"><div className="flex items-start justify-between gap-3"><div><div className="text-[10px] font-bold uppercase tracking-[0.15em] text-violet-500">Copilot Q/A</div><h3 className="mt-1 text-lg font-bold">{answer.question}</h3></div><button type="button" onClick={() => setAnswer(null)} className="rounded-lg p-1 text-muted-foreground hover-elevate" aria-label="Close copilot answer"><X className="h-4 w-4" /></button></div><div className={`mt-3 rounded-xl border p-3 ${answer.available ? "border-emerald-200 bg-emerald-500/10 dark:border-emerald-900" : "border-amber-200 bg-amber-500/10 dark:border-amber-900"}`}><div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Answer</div><p className="mt-1 text-sm leading-relaxed text-foreground/80">{answer.answer}</p></div><div className="mt-4 rounded-xl bg-muted/40 p-3"><div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Evidence available</div><div className="mt-2 flex flex-wrap gap-2">{answer.evidence.map((item) => <span key={item} className="rounded-full bg-card px-2.5 py-1 text-[11px] font-semibold">{item}</span>)}</div></div><button type="button" onClick={() => onNavigate(answer.target)} className="mt-4 inline-flex items-center gap-1 rounded-full bg-sky-500 px-3 py-1.5 text-xs font-bold text-white">Review in CommercePulse <ChevronRight className="h-3.5 w-3.5" /></button></Card>}
     </div>
   );
 }
@@ -355,7 +532,7 @@ export function IntelligencePage({ hasConnected = true, onNavigate }: { hasConne
           <SignalStrip insights={insightRows} onNavigate={go} />
           {loading ? <div className="grid gap-3 sm:grid-cols-3"><Skeleton className="h-28 rounded-2xl" /><Skeleton className="h-28 rounded-2xl" /><Skeleton className="h-28 rounded-2xl" /></div> : null}
           {!loading && active === "analytics" && <AnalyticsSection overview={overview.data} trend={trend.data ?? []} summary={summary.data} fmt={fmt} onNavigate={go} />}
-          {!loading && active === "copilot" && <CopilotSection overview={overview.data} summary={summary.data} insights={insightRows} marketing={marketing.data} campaigns={campaigns.data ?? []} fmt={fmt} rangeLabel={RANGE_LABELS[range]} onNavigate={go} />}
+           {!loading && active === "copilot" && <CopilotSection overview={overview.data} summary={summary.data} insights={insightRows} marketing={marketing.data} campaigns={campaigns.data ?? []} products={products.data ?? []} orders={orders.data?.orders ?? []} integrations={integrations.data ?? []} fmt={fmt} rangeLabel={RANGE_LABELS[range]} onNavigate={go} />}
           {!loading && active === "alerts" && <AlertsSection insights={insightRows} onNavigate={go} />}
           {!loading && active === "operations" && <OperationsSection products={products.data ?? []} orders={orders.data?.orders ?? []} integrations={integrations.data ?? []} onNavigate={go} />}
           {!loading && active === "marketing" && <MarketingIntelligenceSection summary={marketing.data} trend={marketingTrend.data ?? []} campaigns={campaigns.data ?? []} fmt={fmt} onNavigate={go} />}

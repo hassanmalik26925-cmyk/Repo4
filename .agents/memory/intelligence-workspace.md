@@ -3,7 +3,7 @@ name: Intelligence workspace
 description: Product boundary and data-truthfulness rule for the advanced analytics expansion.
 ---
 
-CommercePulse's advanced analytics, copilot, alerts, operations, and marketing intelligence belong in one additive Intelligence workspace rather than replacing existing Dashboard, Reports, Marketing, Products, or Settings surfaces.
+CommercePulse's advanced analytics, copilot, alerts, operations, and marketing intelligence belong in one additive Intelligence workspace rather than replacing existing Dashboard, Reports, Marketing, Products, or Settings surfaces. Copilot uses a ready-made question selector and answers immediately from available records; unavailable datasets must be stated explicitly rather than guessed or handled with extra questions.
 
 **Why:** The five feature packs overlap in their evidence and navigation targets, so a shared decision cockpit avoids duplicated KPI logic while preserving the established product.
 
