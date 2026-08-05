@@ -126,6 +126,24 @@ const PLATFORM_CATEGORY: Record<string, string> = {
   supplier: "Store",
 };
 
+const PLATFORM_NAME: Record<string, string> = {
+  shopify: "Shopify",
+  woocommerce: "WooCommerce",
+  amazon: "Amazon",
+  ebay: "eBay",
+  meta_ads: "Meta Ads",
+  google_ads: "Google Ads",
+  tiktok: "TikTok Ads",
+  pinterest: "Pinterest Ads",
+  snapchat: "Snapchat Ads",
+  microsoft_ads: "Microsoft Ads",
+  klaviyo: "Klaviyo",
+  stripe: "Stripe",
+  paypal: "PayPal",
+  shipstation: "ShipStation",
+  supplier: "Supplier",
+};
+
 const INTEGRATION_GROUPS = [
   {
     key: "store",
@@ -889,15 +907,20 @@ ${
                     </p>
                   </div>
                 </div>
-                <div>
-                  {groupIntegrations.map((intg, index) => (
-                    <div key={intg.id}>
-                      <IntegrationRow integration={intg} onToast={toast} />
-                      {index < groupIntegrations.length - 1 && (
-                        <div className="mx-4 border-t border-[hsl(var(--card-border))]" />
-                      )}
-                    </div>
-                  ))}
+                <div className="space-y-2 p-3">
+                  {group.platforms.map((platform) => {
+                    const accounts = groupIntegrations.filter(
+                      (intg) => intg.platform === platform && !intg.id.startsWith("placeholder-"),
+                    );
+                    return (
+                      <PlatformIntegrationGroup
+                        key={platform}
+                        platform={platform}
+                        accounts={accounts}
+                        onToast={toast}
+                      />
+                    );
+                  })}
                 </div>
               </section>
             );
@@ -1212,14 +1235,134 @@ function MeasurementSourcesGuide() {
   );
 }
 
-// ── Integration row ───────────────────────────────────────────────────────────
+// ── Platform account group ─────────────────────────────────────────────────────
+
+function PlatformIntegrationGroup({
+  platform,
+  accounts,
+  onToast,
+}: {
+  platform: string;
+  accounts: any[];
+  onToast: (msg: string) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [connectErr, setConnectErr] = useState<string | null>(null);
+  const guide = PLATFORM_GUIDES[platform];
+  const displayName = PLATFORM_NAME[platform] ?? platform;
+  const { bg, fg } = PLATFORM_BG[platform] ?? { bg: "#F1F5F9", fg: "#64748B" };
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getListIntegrationsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetIntegrationsHealthQueryKey() });
+  };
+
+  const connect = useConnectIntegration({
+    mutation: {
+      onSuccess: () => {
+        setShowForm(false);
+        setConnectErr(null);
+        invalidate();
+        onToast(`${displayName} account added`);
+      },
+      onError: (err: any) => setConnectErr(friendlyError(err)),
+    },
+  });
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-[hsl(var(--card-border))] bg-background/40">
+      <div className="flex items-center gap-3 px-3 py-3">
+        <SettingIcon bg={bg} fg={fg}>
+          {PLATFORM_ICON[platform] ?? <Plug className="h-4 w-4" />}
+        </SettingIcon>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-bold">{displayName}</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              {accounts.length} {accounts.length === 1 ? "account" : "accounts"}
+            </span>
+          </div>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {accounts.length > 0
+              ? "Each account syncs separately."
+              : `No ${displayName} account connected yet.`}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setShowForm((value) => !value);
+            setConnectErr(null);
+          }}
+          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
+            showForm
+              ? "bg-muted text-foreground"
+              : "bg-sky-500 text-white hover:bg-sky-600"
+          }`}
+          aria-label={`Add another ${displayName} account`}
+          data-testid={`button-add-${platform}-account`}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">{showForm ? "Close" : "Add account"}</span>
+        </button>
+      </div>
+
+      {accounts.length > 0 && (
+        <div className="border-t border-[hsl(var(--card-border))] px-2">
+          {accounts.map((account, index) => (
+            <div key={account.id}>
+              <IntegrationRow
+                integration={account}
+                onToast={onToast}
+                allowAddAccount={false}
+              />
+              {index < accounts.length - 1 && (
+                <div className="mx-2 border-t border-[hsl(var(--card-border))]" />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showForm && (
+        <div className="border-t border-[hsl(var(--card-border))] pt-1">
+          <div className="px-3 pt-2 text-[11px] font-semibold text-sky-700 dark:text-sky-300">
+            Add another {displayName} account
+          </div>
+          <CredentialForm
+            platform={platform}
+            pending={connect.isPending}
+            error={connectErr ?? undefined}
+            onSubmit={(data) => {
+              setConnectErr(null);
+              connect.mutate({ platform, data });
+            }}
+          />
+        </div>
+      )}
+
+      {guide && accounts.length === 0 && !showForm && (
+        <div className="border-t border-[hsl(var(--card-border))] px-3 py-2">
+          <span className="text-[10px] text-muted-foreground">
+            Use “Add account” to enter credentials. Need help? Open the connection guide after adding it.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Connected account row ──────────────────────────────────────────────────────
 
 function IntegrationRow({
   integration,
   onToast,
+  allowAddAccount = true,
 }: {
   integration: any;
   onToast: (msg: string) => void;
+  allowAddAccount?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -1310,20 +1453,22 @@ function IntegrationRow({
             <BookOpen className="h-3 w-3" />
             {showGuide ? "Hide guide" : "How to connect"}
           </button>
-          <button
-            type="button"
-            onClick={() => { setShowForm((s) => !s); setConnectErr(null); }}
-            className={`inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${
-              showForm
-                ? "bg-muted text-foreground"
-                : "border border-sky-500/40 text-sky-600 hover:bg-sky-500/10 dark:text-sky-400"
-            }`}
-            aria-label={`Add another ${integration.displayName} account`}
-            title={`Add another ${integration.displayName} account`}
-          >
-            <Plus className="h-3 w-3" />
-            <span className="hidden sm:inline">{showForm ? "Cancel" : "Add account"}</span>
-          </button>
+          {allowAddAccount && (
+            <button
+              type="button"
+              onClick={() => { setShowForm((s) => !s); setConnectErr(null); }}
+              className={`inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                showForm
+                  ? "bg-muted text-foreground"
+                  : "border border-sky-500/40 text-sky-600 hover:bg-sky-500/10 dark:text-sky-400"
+              }`}
+              aria-label={`Add another ${integration.displayName} account`}
+              title={`Add another ${integration.displayName} account`}
+            >
+              <Plus className="h-3 w-3" />
+              <span className="hidden sm:inline">{showForm ? "Cancel" : "Add account"}</span>
+            </button>
+          )}
           {isConnected ? (
             <>
               <button
