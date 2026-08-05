@@ -3,7 +3,7 @@ name: Traffic measurement boundary
 description: Product boundary for GA4, browser pixels, and truthful traffic reporting.
 ---
 
-CommercePulse currently has authenticated first-party workspace event tracking, but not a public storefront event endpoint, pixel installation snippet, or GA4 OAuth/property import flow. Settings may save GA4 and pixel IDs as browser-local setup references, but they must not be presented as connected ingestion.
+CommercePulse currently has authenticated first-party workspace event tracking, but not a public storefront event endpoint, pixel installation snippet, or GA4 OAuth/property import flow. GA4 and pixel IDs are account-backed setup values, but they must not be presented as connected ingestion.
 
 **Why:** Traffic and funnel numbers must reflect actual events or authorized connector data. Presenting a fake GA4/pixel connection would make sessions, conversions, and attribution appear more complete than the product can support.
 

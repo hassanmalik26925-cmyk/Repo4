@@ -654,6 +654,9 @@ export const GetSettingsResponse = zod.object({
   dataRefreshMinutes: zod.number(),
   defaultRange: zod.string(),
   currency: zod.string(),
+  ga4MeasurementId: zod.string().nullish(),
+  pixelId: zod.string().nullish(),
+  copilotAlertRules: zod.array(zod.string()).optional(),
   isDemo: zod.boolean().optional(),
 });
 
@@ -663,6 +666,9 @@ export const UpdateSettingsBody = zod.object({
   dataRefreshMinutes: zod.number().optional(),
   defaultRange: zod.string().optional(),
   currency: zod.string().optional(),
+  ga4MeasurementId: zod.string().nullish(),
+  pixelId: zod.string().nullish(),
+  copilotAlertRules: zod.array(zod.string()).optional(),
   isOnboarded: zod.boolean().optional(),
 });
 
@@ -674,6 +680,9 @@ export const UpdateSettingsResponse = zod.object({
   dataRefreshMinutes: zod.number(),
   defaultRange: zod.string(),
   currency: zod.string(),
+  ga4MeasurementId: zod.string().nullish(),
+  pixelId: zod.string().nullish(),
+  copilotAlertRules: zod.array(zod.string()).optional(),
   isDemo: zod.boolean().optional(),
 });
 

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -38,6 +38,8 @@ import {
   useGetMarketingSummary,
   useGetMarketingTrend,
   useGetRevenueTrend,
+  useGetSettings,
+  useUpdateSettings,
   useListCampaigns,
   useListIntegrations,
   useListOrders,
@@ -455,17 +457,36 @@ function CopilotSection({
   );
 }
 
-function AlertsSection({ insights, onNavigate }: { insights: any[]; onNavigate: (target: Target) => void }) {
-  const [rules, setRules] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem("pulse.intelligence.alert-rules") ?? "[]"); } catch { return []; } });
+function AlertsSection({
+  insights,
+  onNavigate,
+  savedRules,
+  updateSettings,
+}: {
+  insights: any[];
+  onNavigate: (target: Target) => void;
+  savedRules: string[];
+  updateSettings: { isPending: boolean; mutate: (variables: { data: Record<string, unknown> }, options?: { onSuccess?: () => void }) => void };
+}) {
+  const [rules, setRules] = useState<string[]>(savedRules);
   const [resolved, setResolved] = useState<string[]>([]);
   const [newRule, setNewRule] = useState("");
   const alerts = insights.filter((item) => !resolved.includes(item.id));
-  function addRule() { if (!newRule.trim()) return; const next = [newRule.trim(), ...rules]; setRules(next); localStorage.setItem("pulse.intelligence.alert-rules", JSON.stringify(next)); setNewRule(""); }
+  useEffect(() => setRules(savedRules), [savedRules]);
+  function persistRules(next: string[]) {
+    setRules(next);
+    updateSettings.mutate({ data: { copilotAlertRules: next } });
+  }
+  function addRule() {
+    if (!newRule.trim()) return;
+    persistRules([newRule.trim(), ...rules]);
+    setNewRule("");
+  }
   return (
     <div className="space-y-4">
       <SectionHeader icon={<Bell className="h-4 w-4" />} eyebrow="Automated attention" title="Alerts that keep the team ahead" detail="Live insight signals plus your saved monitoring rules, without noisy notifications." right={<span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-600">{alerts.length} active</span>} />
       <div className="grid gap-3 sm:grid-cols-3"><StatCard label="Critical" value={String(alerts.filter((item) => item.severity === "critical").length)} color={C.red} icon={<ShieldAlert className="h-4 w-4" />} /><StatCard label="Warnings" value={String(alerts.filter((item) => item.severity === "warning").length)} color={C.amber} icon={<AlertTriangle className="h-4 w-4" />} /><StatCard label="Saved rules" value={String(rules.length)} color={C.violet} icon={<Bell className="h-4 w-4" />} /></div>
-      <Card className="p-4"><div className="flex items-center gap-2 text-sm font-bold"><RefreshCw className="h-4 w-4 text-sky-500" /> Create a monitoring rule</div><p className="mt-1 text-xs text-muted-foreground">Save a plain-language rule for your operating checklist. It stays with this browser until a notification channel is connected.</p><div className="mt-3 flex gap-2"><input value={newRule} onChange={(event) => setNewRule(event.target.value)} placeholder="e.g. Tell me when ROAS drops below 2x" className="min-w-0 flex-1 rounded-xl border border-[hsl(var(--card-border))] bg-background px-3 py-2 text-xs" /><button type="button" onClick={addRule} disabled={!newRule.trim()} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Save rule</button></div>{rules.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{rules.map((rule) => <span key={rule} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold">{rule}<button type="button" onClick={() => { const next = rules.filter((item) => item !== rule); setRules(next); localStorage.setItem("pulse.intelligence.alert-rules", JSON.stringify(next)); }}><X className="h-3 w-3 text-muted-foreground" /></button></span>)}</div>}</Card>
+      <Card className="p-4"><div className="flex items-center gap-2 text-sm font-bold"><RefreshCw className="h-4 w-4 text-sky-500" /> Create a monitoring rule</div><p className="mt-1 text-xs text-muted-foreground">Saved to your CommercePulse account. Notification delivery still requires a connected notification channel.</p><div className="mt-3 flex gap-2"><input value={newRule} onChange={(event) => setNewRule(event.target.value)} placeholder="e.g. Tell me when ROAS drops below 2x" className="min-w-0 flex-1 rounded-xl border border-[hsl(var(--card-border))] bg-background px-3 py-2 text-xs" /><button type="button" onClick={addRule} disabled={!newRule.trim() || updateSettings.isPending} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Save rule</button></div>{rules.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{rules.map((rule) => <span key={rule} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold">{rule}<button type="button" onClick={() => persistRules(rules.filter((item) => item !== rule))} aria-label={`Remove rule ${rule}`}><X className="h-3 w-3 text-muted-foreground" /></button></span>)}</div>}</Card>
       <Card className="overflow-hidden">{alerts.length ? <div className="divide-y divide-[hsl(var(--card-border))]">{alerts.map((alert) => { const config = tone[(alert.severity as keyof typeof tone) in tone ? alert.severity as keyof typeof tone : "info"]; return <div key={alert.id} className="flex items-start gap-3 p-4"><span className={`rounded-lg p-2 ${config.bg} ${config.text}`}>{config.icon}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-bold">{alert.title}</span>{alert.metric && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${config.bg} ${config.text}`}>{alert.metric}</span>}</div><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{alert.description}</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => onNavigate((alert.actionTarget ?? { screen: "reports", section: "overview" }) as Target)} className="rounded-full bg-sky-500 px-2.5 py-1 text-[10px] font-bold text-white">Review</button><button type="button" onClick={() => setResolved((current) => [...current, alert.id])} className="rounded-full border border-[hsl(var(--card-border))] px-2.5 py-1 text-[10px] font-semibold">Resolve</button></div></div></div> })}</div> : <EmptyState title="No active alerts" description="Your current data has no unresolved signals in this range." icon={<CheckCircle2 className="h-5 w-5 text-emerald-500" />} />}</Card>
     </div>
   );
@@ -517,6 +538,8 @@ export function IntelligencePage({ hasConnected = true, onNavigate }: { hasConne
   const products = useListProducts({ range }, { query: { enabled: hasConnected, queryKey: ["intelligence", "products", range] } });
   const orders = useListOrders({ range }, { query: { enabled: hasConnected, queryKey: ["intelligence", "orders", range] } });
   const integrations = useListIntegrations({ query: { enabled: hasConnected, queryKey: ["intelligence", "integrations"] } });
+  const settings = useGetSettings({ query: { enabled: hasConnected, queryKey: ["intelligence", "settings"] } });
+  const updateSettings = useUpdateSettings();
   const insightRows = (insights.data as any)?.insights ?? [];
   const loading = overview.isLoading || summary.isLoading;
   const go = (target: Target) => onNavigate(target);
@@ -533,7 +556,7 @@ export function IntelligencePage({ hasConnected = true, onNavigate }: { hasConne
           {loading ? <div className="grid gap-3 sm:grid-cols-3"><Skeleton className="h-28 rounded-2xl" /><Skeleton className="h-28 rounded-2xl" /><Skeleton className="h-28 rounded-2xl" /></div> : null}
           {!loading && active === "analytics" && <AnalyticsSection overview={overview.data} trend={trend.data ?? []} summary={summary.data} fmt={fmt} onNavigate={go} />}
            {!loading && active === "copilot" && <CopilotSection overview={overview.data} summary={summary.data} insights={insightRows} marketing={marketing.data} campaigns={campaigns.data ?? []} products={products.data ?? []} orders={orders.data?.orders ?? []} integrations={integrations.data ?? []} fmt={fmt} rangeLabel={RANGE_LABELS[range]} onNavigate={go} />}
-          {!loading && active === "alerts" && <AlertsSection insights={insightRows} onNavigate={go} />}
+           {!loading && active === "alerts" && <AlertsSection insights={insightRows} onNavigate={go} savedRules={settings.data?.copilotAlertRules ?? []} updateSettings={updateSettings} />}
           {!loading && active === "operations" && <OperationsSection products={products.data ?? []} orders={orders.data?.orders ?? []} integrations={integrations.data ?? []} onNavigate={go} />}
           {!loading && active === "marketing" && <MarketingIntelligenceSection summary={marketing.data} trend={marketingTrend.data ?? []} campaigns={campaigns.data ?? []} fmt={fmt} onNavigate={go} />}
         </>}

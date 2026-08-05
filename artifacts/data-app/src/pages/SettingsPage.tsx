@@ -871,7 +871,7 @@ ${
 
       {/* ── Integrations ───────────────────────────────────────────── */}
       <SectionLabel label="Integrations" />
-      <MeasurementSourcesGuide />
+      <MeasurementSourcesGuide settings={settings} update={update} />
       {integrations.isLoading ? (
         <div className="mb-5 rounded-2xl border border-[hsl(var(--card-border))] bg-card p-4">
           <Skeleton className="h-56" />
@@ -1174,16 +1174,34 @@ ${
   );
 }
 
-function MeasurementSourcesGuide() {
-  const [ga4Id, setGa4Id] = useState(() => localStorage.getItem("pulse.measurement.ga4") ?? "");
-  const [pixelId, setPixelId] = useState(() => localStorage.getItem("pulse.measurement.pixel") ?? "");
+function MeasurementSourcesGuide({
+  settings,
+  update,
+}: {
+  settings: { data?: { ga4MeasurementId?: string | null; pixelId?: string | null }; refetch: () => Promise<unknown> };
+  update: { isPending: boolean; mutate: (variables: { data: Record<string, unknown> }, options?: { onSuccess?: () => void }) => void };
+}) {
+  const [ga4Id, setGa4Id] = useState("");
+  const [pixelId, setPixelId] = useState("");
   const [saved, setSaved] = useState<string | null>(null);
+
+  useEffect(() => {
+    setGa4Id(settings.data?.ga4MeasurementId ?? "");
+    setPixelId(settings.data?.pixelId ?? "");
+  }, [settings.data?.ga4MeasurementId, settings.data?.pixelId]);
 
   function saveMeasurement(kind: "ga4" | "pixel") {
     const value = kind === "ga4" ? ga4Id.trim() : pixelId.trim();
-    localStorage.setItem(`pulse.measurement.${kind}`, value);
-    setSaved(kind);
-    window.setTimeout(() => setSaved(null), 2200);
+    update.mutate(
+      { data: kind === "ga4" ? { ga4MeasurementId: value || null } : { pixelId: value || null } },
+      {
+        onSuccess: () => {
+          void settings.refetch();
+          setSaved(kind);
+          window.setTimeout(() => setSaved(null), 2200);
+        },
+      },
+    );
   }
 
   return (
@@ -1231,7 +1249,7 @@ function MeasurementSourcesGuide() {
           <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">Enter the web stream Measurement ID, usually formatted like G-XXXXXXXXXX.</p>
           <div className="mt-2 flex gap-2">
             <input value={ga4Id} onChange={(event) => setGa4Id(event.target.value)} placeholder="G-XXXXXXXXXX" aria-label="GA4 Measurement ID" className="min-w-0 flex-1 rounded-lg border border-[hsl(var(--card-border))] bg-background px-2.5 py-2 text-xs font-mono" />
-            <button type="button" onClick={() => saveMeasurement("ga4")} className="rounded-lg bg-sky-500 px-2.5 py-2 text-[10px] font-bold text-white hover:bg-sky-600">{saved === "ga4" ? "Saved" : "Save"}</button>
+            <button type="button" onClick={() => saveMeasurement("ga4")} disabled={update.isPending} className="rounded-lg bg-sky-500 px-2.5 py-2 text-[10px] font-bold text-white hover:bg-sky-600 disabled:opacity-50">{saved === "ga4" ? "Saved" : "Save"}</button>
           </div>
           <div className="mt-2 flex items-start gap-1.5 text-[10px] text-amber-800/75 dark:text-amber-200/75"><AlertCircle className="mt-0.5 h-3 w-3 shrink-0" /> Saved for setup reference; GA4 OAuth/property import is not connected yet.</div>
         </div>
@@ -1243,7 +1261,7 @@ function MeasurementSourcesGuide() {
           <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">Enter the browser pixel ID you want to use for storefront conversion tracking.</p>
           <div className="mt-2 flex gap-2">
             <input value={pixelId} onChange={(event) => setPixelId(event.target.value)} placeholder="Pixel ID" aria-label="Storefront pixel ID" className="min-w-0 flex-1 rounded-lg border border-[hsl(var(--card-border))] bg-background px-2.5 py-2 text-xs font-mono" />
-            <button type="button" onClick={() => saveMeasurement("pixel")} className="rounded-lg bg-violet-500 px-2.5 py-2 text-[10px] font-bold text-white hover:bg-violet-600">{saved === "pixel" ? "Saved" : "Save"}</button>
+            <button type="button" onClick={() => saveMeasurement("pixel")} disabled={update.isPending} className="rounded-lg bg-violet-500 px-2.5 py-2 text-[10px] font-bold text-white hover:bg-violet-600 disabled:opacity-50">{saved === "pixel" ? "Saved" : "Save"}</button>
           </div>
           <div className="mt-2 flex items-start gap-1.5 text-[10px] text-amber-800/75 dark:text-amber-200/75"><AlertCircle className="mt-0.5 h-3 w-3 shrink-0" /> Saved for setup reference; public pixel ingestion and installation are not connected yet.</div>
         </div>

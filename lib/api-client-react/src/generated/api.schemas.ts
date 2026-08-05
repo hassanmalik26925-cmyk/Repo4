@@ -523,6 +523,11 @@ export interface Settings {
   dataRefreshMinutes: number;
   defaultRange: string;
   currency: string;
+  /** @nullable */
+  ga4MeasurementId?: string | null;
+  /** @nullable */
+  pixelId?: string | null;
+  copilotAlertRules?: string[];
   isDemo?: boolean;
 }
 
@@ -532,6 +537,11 @@ export interface UpdateSettingsBody {
   dataRefreshMinutes?: number;
   defaultRange?: string;
   currency?: string;
+  /** @nullable */
+  ga4MeasurementId?: string | null;
+  /** @nullable */
+  pixelId?: string | null;
+  copilotAlertRules?: string[];
   isOnboarded?: boolean;
 }
 

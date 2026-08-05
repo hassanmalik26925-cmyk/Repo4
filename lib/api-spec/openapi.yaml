@@ -1700,6 +1700,11 @@ components:
         dataRefreshMinutes: { type: integer }
         defaultRange: { type: string }
         currency: { type: string }
+        ga4MeasurementId: { type: ["string", "null"] }
+        pixelId: { type: ["string", "null"] }
+        copilotAlertRules:
+          type: array
+          items: { type: string }
         isDemo: { type: boolean }
 
     UpdateSettingsBody:
@@ -1710,6 +1715,11 @@ components:
         dataRefreshMinutes: { type: integer }
         defaultRange: { type: string }
         currency: { type: string }
+        ga4MeasurementId: { type: ["string", "null"] }
+        pixelId: { type: ["string", "null"] }
+        copilotAlertRules:
+          type: array
+          items: { type: string }
         isOnboarded: { type: boolean }
 
     SuccessResponse:

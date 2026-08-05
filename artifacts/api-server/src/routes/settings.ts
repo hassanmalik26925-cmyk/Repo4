@@ -12,6 +12,13 @@ const router: IRouter = Router();
 router.use(requireAuth);
 
 function shape(user: typeof usersTable.$inferSelect) {
+  let copilotAlertRules: string[] = [];
+  try {
+    const parsed = JSON.parse(user.copilotAlertRules || "[]");
+    if (Array.isArray(parsed)) copilotAlertRules = parsed.filter((item): item is string => typeof item === "string");
+  } catch {
+    copilotAlertRules = [];
+  }
   return {
     name: user.name,
     email: user.email,
@@ -20,6 +27,9 @@ function shape(user: typeof usersTable.$inferSelect) {
     dataRefreshMinutes: Number(user.dataRefreshMinutes),
     defaultRange: user.defaultRange,
     currency: user.currency,
+    ga4MeasurementId: user.ga4MeasurementId,
+    pixelId: user.pixelId,
+    copilotAlertRules,
     isOnboarded: user.isOnboarded === "true",
     isDemo: user.isDemo === "true",
   };
@@ -54,6 +64,9 @@ router.patch("/settings", async (req, res): Promise<void> => {
   if (parsed.data.defaultRange !== undefined)
     update.defaultRange = parsed.data.defaultRange;
   if (parsed.data.currency !== undefined) update.currency = parsed.data.currency;
+  if (parsed.data.ga4MeasurementId !== undefined) update.ga4MeasurementId = parsed.data.ga4MeasurementId;
+  if (parsed.data.pixelId !== undefined) update.pixelId = parsed.data.pixelId;
+  if (parsed.data.copilotAlertRules !== undefined) update.copilotAlertRules = JSON.stringify(parsed.data.copilotAlertRules);
   if (parsed.data.isOnboarded !== undefined) update.isOnboarded = String(parsed.data.isOnboarded);
   const [user] = await db
     .update(usersTable)
