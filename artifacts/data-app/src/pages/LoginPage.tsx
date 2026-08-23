@@ -157,7 +157,7 @@ export function LoginPage({ defaultMode = "login" }: { defaultMode?: Mode }) {
             <div className="mb-6 grid grid-cols-3 gap-2">
               <button
                 type="button"
-onClick={signInWithGoogle} 
+                onClick={() => void startSocialSignIn("google")}
                 className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-background/60 text-xs font-semibold hover:bg-muted"
                 data-testid="btn-social-google"
               >
