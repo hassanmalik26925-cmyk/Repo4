@@ -1,4 +1,3 @@
-import { Chrome } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
